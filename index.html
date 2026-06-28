@@ -1,0 +1,2781 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>비상! 지질 연구소 탈출 작전</title>
+
+  <style>
+    /* =========================================================
+       [CSS 섹션]
+       - 단일 index.html, 순수 HTML/CSS/Vanilla JS 게임입니다.
+       - 모든 화면은 .screen + .is-active로 전환합니다.
+       ========================================================= */
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: "Pretendard", "Noto Sans KR", "Apple SD Gothic Neo", Arial, sans-serif;
+      font-size: 18px;
+      color: #f8fafc;
+      background: #07131a;
+      user-select: none;
+    }
+
+    button { font: inherit; }
+
+    .game-root {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      min-width: 320px;
+      min-height: 560px;
+      overflow: hidden;
+      background: #07131a;
+    }
+
+    .screen {
+      display: none;
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #10202a;
+      background-position: center;
+      background-size: cover;
+      background-repeat: no-repeat;
+    }
+
+    .screen.is-active { display: block; }
+
+    .screen::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background:
+        radial-gradient(circle at center, rgba(255,255,255,0.06), transparent 42%),
+        linear-gradient(to bottom, rgba(4,12,18,0.10), rgba(4,12,18,0.48));
+    }
+
+    /* =========================================================
+       [공통 HUD / 토스트]
+       ========================================================= */
+    .hud {
+      position: absolute;
+      top: 14px;
+      left: 50%;
+      z-index: 80;
+      width: min(94vw, 1080px);
+      min-height: 62px;
+      padding: 10px 12px;
+      transform: translateX(-50%);
+      display: grid;
+      grid-template-columns: auto 1fr auto auto;
+      gap: 10px;
+      align-items: center;
+      border: 1px solid rgba(255,255,255,0.22);
+      border-radius: 10px;
+      background: rgba(0,0,0,0.58);
+      box-shadow: 0 16px 36px rgba(0,0,0,0.28);
+      backdrop-filter: blur(12px);
+    }
+
+    .hud-stage {
+      min-width: 118px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: rgba(14,165,233,0.24);
+      color: #e0f2fe;
+      font-size: 1rem;
+      font-weight: 900;
+      text-align: center;
+    }
+
+    .hud-title {
+      color: #ffffff;
+      font-size: clamp(1.15rem, 2.2vw, 1.45rem);
+      font-weight: 900;
+      line-height: 1.25;
+      text-shadow: 0 2px 0 rgba(0,0,0,0.55);
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .hud-progress,
+    .hud-timer {
+      min-width: 78px;
+      color: #fde68a;
+      font-size: 1.08rem;
+      font-weight: 900;
+      text-align: center;
+    }
+
+    .hud-timer { color: #fecaca; text-shadow: 0 0 18px rgba(239,68,68,0.7); }
+
+    .bgm-button {
+      min-width: 104px;
+      min-height: 42px;
+      border: 0;
+      border-radius: 8px;
+      color: #ffffff;
+      background: rgba(255,255,255,0.17);
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 900;
+    }
+
+    .toast {
+      position: absolute;
+      left: 50%;
+      bottom: clamp(170px, 20vh, 260px);
+      z-index: 70;
+      width: fit-content;
+      max-width: min(82vw, 720px);
+      min-height: 58px;
+      padding: 16px 26px;
+      transform: translate(-50%, 18px);
+      border: 2px solid rgba(255,255,255,0.24);
+      border-radius: 16px;
+      background: rgba(0,0,0,0.76);
+      color: #ffffff;
+      box-shadow: 0 20px 44px rgba(0,0,0,0.34);
+      backdrop-filter: blur(12px);
+      font-size: clamp(1.22rem, 2.4vw, 1.75rem);
+      font-weight: 900;
+      line-height: 1.35;
+      text-align: center;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 220ms ease, transform 220ms ease, visibility 220ms ease;
+    }
+
+    .toast.is-visible { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
+    .toast.info { border-color: rgba(125,211,252,0.8); }
+    .toast.success { border-color: rgba(34,197,94,0.84); }
+    .toast.warning { border-color: rgba(250,204,21,0.9); }
+    .toast.danger { border-color: rgba(248,113,113,0.92); }
+
+    .stage-card,
+    .toast,
+    .modal,
+    .drop-zone,
+    .item-card,
+    .text-item,
+    .choice-card,
+    .clue-card-popup,
+    .stage3-complete-message,
+    .wrong-action,
+    .emergency-message,
+    .quake-warning,
+    .stage8-sub-message,
+    #desk-dropzone,
+    #exit-door::after,
+    button {
+      word-break: keep-all;
+      overflow-wrap: normal;
+      white-space: normal;
+      line-break: strict;
+      line-height: 1.45;
+    }
+
+    button,
+    .stage3-next-button,
+    .ending-restart-btn {
+      white-space: nowrap;
+    }
+
+    .stage-card {
+      position: absolute;
+      top: 92px;
+      left: 50%;
+      z-index: 5;
+      width: min(92vw, 920px);
+      padding: 18px 22px;
+      transform: translateX(-50%);
+      border: 1px solid rgba(255,255,255,0.22);
+      border-radius: 12px;
+      background: rgba(0,0,0,0.58);
+      box-shadow: 0 18px 42px rgba(0,0,0,0.30);
+      backdrop-filter: blur(12px);
+      text-align: center;
+    }
+
+    .stage-card h2 {
+      color: #ffffff;
+      font-size: clamp(1.75rem, 3.8vw, 2.55rem);
+      font-weight: 900;
+      line-height: 1.18;
+      text-shadow: 0 3px 0 rgba(0,0,0,0.55);
+    }
+
+    .stage-card p {
+      margin-top: 8px;
+      color: rgba(248,250,252,0.9);
+      font-size: clamp(1.2rem, 2.6vw, 1.55rem);
+      font-weight: 800;
+      line-height: 1.45;
+      word-break: keep-all;
+    }
+
+    .big-panel {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      z-index: 5;
+      width: min(90vw, 840px);
+      padding: clamp(30px, 5vw, 56px);
+      transform: translate(-50%, -50%);
+      border: 1px solid rgba(255,255,255,0.24);
+      border-radius: 14px;
+      background: rgba(0,0,0,0.68);
+      box-shadow: 0 32px 80px rgba(0,0,0,0.48);
+      backdrop-filter: blur(12px);
+      text-align: center;
+    }
+
+    .big-title {
+      color: #ffffff;
+      font-size: clamp(2.25rem, 6.4vw, 4.6rem);
+      font-weight: 900;
+      line-height: 1.12;
+      text-shadow: 0 3px 0 rgba(0,0,0,0.58), 0 14px 30px rgba(0,0,0,0.42);
+    }
+
+    .big-copy {
+      margin: 20px auto 0;
+      max-width: 720px;
+      color: rgba(248,250,252,0.94);
+      font-size: clamp(1.25rem, 2.7vw, 1.65rem);
+      font-weight: 800;
+      line-height: 1.62;
+      word-break: keep-all;
+      white-space: pre-line;
+    }
+
+    .primary-button,
+    .next-button,
+    .choice-card {
+      min-height: 62px;
+      border: 0;
+      border-radius: 12px;
+      font-size: clamp(1.16rem, 2.4vw, 1.45rem);
+      font-weight: 900;
+      cursor: pointer;
+      transition: transform 160ms ease, filter 160ms ease, box-shadow 160ms ease;
+    }
+
+    .primary-button,
+    .next-button {
+      min-width: 190px;
+      padding: 0 28px;
+      color: #07131a;
+      background: linear-gradient(180deg, #fef08a, #facc15);
+      box-shadow: 0 18px 34px rgba(250,204,21,0.28), inset 0 1px 0 rgba(255,255,255,0.55);
+    }
+
+    .primary-button:hover,
+    .next-button:hover,
+    .choice-card:hover { transform: translateY(-2px); filter: brightness(1.06); }
+
+    .intro-actions {
+      margin-top: 28px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .secondary-button {
+      min-width: 118px;
+      min-height: 54px;
+      padding: 0 20px;
+      border: 1px solid rgba(255,255,255,0.28);
+      border-radius: 10px;
+      color: #ffffff;
+      background: rgba(255,255,255,0.14);
+      font-size: 1.1rem;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .inventory-bar {
+      position: absolute;
+      left: 50%;
+      bottom: clamp(16px, 3vh, 30px);
+      z-index: 9;
+      transform: translateX(-50%);
+      min-height: 180px;
+      padding: 14px 18px;
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      border: 1px solid rgba(255,255,255,0.22);
+      border-radius: 12px;
+      background:
+        linear-gradient(rgba(5,15,23,0.74), rgba(5,15,23,0.74)),
+        url("./assets/images/ui_inventory.jpeg");
+      background-position: center;
+      background-size: cover;
+      box-shadow: 0 22px 54px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.16);
+      backdrop-filter: blur(14px);
+    }
+
+    .item-card,
+    .text-item {
+      width: clamp(150px, 13vw, 200px);
+      min-width: clamp(150px, 13vw, 200px);
+      min-height: clamp(165px, 14vw, 220px);
+      border: 1px solid rgba(255,255,255,0.22);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.15);
+      color: #ffffff;
+      cursor: grab;
+      display: grid;
+      grid-template-rows: minmax(118px, 1fr) auto;
+      place-items: center;
+      padding: 8px 10px 12px;
+      font-size: clamp(1.08rem, 1.6vw, 1.24rem);
+      font-weight: 900;
+      line-height: 1.25;
+      text-align: center;
+      text-shadow: 0 2px 0 rgba(0,0,0,0.58);
+    }
+
+    .item-card img,
+    .choice-card img {
+      display: block;
+      width: 96%;
+      height: clamp(118px, 10vw, 158px);
+      max-height: 158px;
+      object-fit: contain;
+      border-radius: 11px;
+      margin: 0 auto 6px;
+      pointer-events: none;
+      box-shadow: 0 10px 18px rgba(0,0,0,0.28);
+    }
+
+    .item-card span,
+    .text-item span,
+    .choice-card span {
+      font-size: clamp(1.08rem, 1.35vw, 1.28rem);
+      line-height: 1.15;
+      font-weight: 900;
+      word-break: keep-all;
+    }
+
+    .stage1-item img,
+    #access-card-item img,
+    .ash-item img,
+    #cushion-item img {
+      width: 96%;
+      height: clamp(128px, 10.5vw, 168px);
+      max-height: 168px;
+    }
+
+    .stage1-item,
+    #cushion-item {
+      min-height: clamp(172px, 14.5vw, 224px);
+    }
+
+    .stage1-item img {
+      height: clamp(132px, 11vw, 172px);
+      max-height: 172px;
+    }
+
+    .item-card[disabled],
+    .text-item[disabled] { opacity: 0.28; filter: grayscale(1); cursor: default; }
+
+    .drop-zone {
+      position: absolute;
+      z-index: 7;
+      width: clamp(230px, 24vw, 360px);
+      min-height: 104px;
+      padding: 18px 20px;
+      transform: translate(-50%, -50%);
+      border: 4px dashed rgba(255,255,255,0.94);
+      border-radius: 14px;
+      background: rgba(15,23,42,0.60);
+      color: #ffffff;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      font-size: clamp(1.12rem, 2vw, 1.35rem);
+      font-weight: 900;
+      line-height: 1.35;
+      word-break: keep-all;
+      text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;
+      box-shadow: 0 18px 42px rgba(0,0,0,0.3);
+      backdrop-filter: blur(7px);
+      transition: transform 180ms ease, border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
+    }
+
+    .drop-zone.is-hovered {
+      transform: translate(-50%, -50%) scale(1.04);
+      border-color: #7dd3fc;
+      background: rgba(14,116,144,0.68);
+      box-shadow: 0 0 0 4px rgba(125,211,252,0.24), 0 22px 48px rgba(0,0,0,0.34);
+    }
+
+    .is-correct {
+      border-color: #22c55e !important;
+      background: rgba(5,46,22,0.74) !important;
+      box-shadow: 0 0 0 5px rgba(34,197,94,0.24), 0 0 34px rgba(34,197,94,0.62) !important;
+    }
+
+    .is-wrong { animation: wrong-shake 280ms ease; }
+
+    @keyframes wrong-shake {
+      0%, 100% { transform: translate(-50%, -50%); }
+      25% { transform: translate(calc(-50% - 9px), -50%); }
+      75% { transform: translate(calc(-50% + 9px), -50%); }
+    }
+
+    .choice-grid {
+      position: absolute;
+      left: 50%;
+      top: 58%;
+      z-index: 7;
+      width: min(92vw, 860px);
+      transform: translate(-50%, -50%);
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .choice-card {
+      padding: 18px;
+      border: 2px solid rgba(255,255,255,0.22);
+      color: #ffffff;
+      background: rgba(0,0,0,0.62);
+      box-shadow: 0 18px 42px rgba(0,0,0,0.28);
+      display: grid;
+      place-items: center;
+      gap: 10px;
+      text-align: center;
+      min-height: 116px;
+    }
+
+    /* =========================================================
+       [INTRO]
+       ========================================================= */
+    #intro {
+      background-image:
+        linear-gradient(rgba(4,12,18,0.28), rgba(4,12,18,0.5)),
+        url("./assets/images/bg_intro.jpeg");
+    }
+
+    .tutorial-step { display: none; }
+    .tutorial-step.is-active {
+      display: block;
+      animation: introFade 260ms ease;
+    }
+
+    .intro-dots {
+      margin-top: 22px;
+      color: rgba(255, 255, 255, 0.58);
+      font-size: 1.35rem;
+      font-weight: 900;
+      letter-spacing: 0;
+    }
+
+    .intro-dots span {
+      display: inline-block;
+      margin: 0 4px;
+      transition: transform 160ms ease, color 160ms ease;
+    }
+
+    .intro-dots span.is-active {
+      color: #facc15;
+      transform: scale(1.22);
+    }
+
+    .intro-actions[data-step="0"] #intro-prev,
+    .intro-actions[data-step="2"] #intro-next,
+    .intro-actions[data-step="2"] #intro-skip,
+    .intro-actions:not([data-step="2"]) #start-button {
+      display: none;
+    }
+
+    #start-button {
+      background: linear-gradient(180deg, #bbf7d0, #22c55e);
+      color: #052e16;
+      min-width: 230px;
+      min-height: 68px;
+      font-size: clamp(1.3rem, 2.8vw, 1.7rem);
+      box-shadow: 0 20px 40px rgba(34, 197, 94, 0.34);
+    }
+
+    #intro-skip {
+      min-width: 104px;
+      min-height: 46px;
+      font-size: 1rem;
+      opacity: 0.82;
+    }
+
+    @keyframes introFade {
+      from { opacity: 0; transform: translateX(18px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    /* =========================================================
+       [공통 비상 오버레이]
+       ========================================================= */
+    .emergency-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 60;
+      pointer-events: none;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 240ms ease, visibility 240ms ease;
+    }
+
+    .emergency-overlay.is-active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .emergency-overlay::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border: 8px solid rgba(239, 68, 68, 0.58);
+      box-shadow:
+        inset 0 0 34px rgba(239, 68, 68, 0.34),
+        inset 0 0 82px rgba(127, 29, 29, 0.26);
+      animation: emergencyOverlayFlash 0.75s infinite;
+    }
+
+    .emergency-overlay.level-1::before {
+      border-color: rgba(248, 113, 113, 0.36);
+      animation-duration: 1.1s;
+    }
+
+    .emergency-overlay.level-2::before {
+      border-color: rgba(239, 68, 68, 0.58);
+    }
+
+    .emergency-overlay.level-3::before {
+      border-color: rgba(239, 68, 68, 0.78);
+      box-shadow:
+        inset 0 0 42px rgba(239, 68, 68, 0.45),
+        inset 0 0 96px rgba(127, 29, 29, 0.34);
+    }
+
+    .emergency-light {
+      position: absolute;
+      top: 26px;
+      width: 90px;
+      height: 90px;
+      border-radius: 999px;
+      background:
+        radial-gradient(circle, rgba(255,255,255,0.95) 0 10%, rgba(248,113,113,0.95) 20%, rgba(185,28,28,0.85) 52%, transparent 70%);
+      box-shadow: 0 0 40px rgba(239,68,68,0.75);
+      animation: sirenLight 0.8s infinite;
+    }
+
+    .emergency-light-left { left: 28px; }
+    .emergency-light-right { right: 28px; animation-delay: 0.4s; }
+
+    .emergency-message {
+      position: absolute;
+      top: 18%;
+      left: 50%;
+      transform: translateX(-50%);
+      max-width: min(90vw, 820px);
+      padding: 16px 28px;
+      border-radius: 14px;
+      background: rgba(127, 29, 29, 0.84);
+      border: 2px solid rgba(254, 202, 202, 0.86);
+      color: #ffffff;
+      font-size: clamp(1.5rem, 4vw, 2.6rem);
+      font-weight: 900;
+      text-align: center;
+      text-shadow: 0 3px 0 rgba(0,0,0,0.5);
+      animation: emergencyMessagePulse 0.9s infinite;
+    }
+
+    .emergency-message.is-stage8-hidden { display: none; }
+
+    @keyframes emergencyOverlayFlash {
+      0%, 100% { opacity: 0.28; }
+      50% { opacity: 0.82; }
+    }
+
+    @keyframes sirenLight {
+      0%, 100% { opacity: 0.18; transform: scale(0.88); }
+      50% { opacity: 0.92; transform: scale(1.08); }
+    }
+
+    @keyframes emergencyMessagePulse {
+      0%, 100% { transform: translateX(-50%) scale(1); }
+      50% { transform: translateX(-50%) scale(1.035); }
+    }
+
+    .is-soft-shaking { animation: softShake 180ms infinite; }
+    .is-strong-shaking { animation: strongShake 90ms infinite; }
+
+    @keyframes softShake {
+      0%, 100% { transform: translate(0, 0); }
+      25% { transform: translate(-3px, 2px); }
+      50% { transform: translate(2px, -2px); }
+      75% { transform: translate(3px, 2px); }
+    }
+
+    @keyframes strongShake {
+      0%, 100% { transform: translate(0, 0) rotate(0); }
+      20% { transform: translate(-8px, 5px) rotate(-0.4deg); }
+      40% { transform: translate(7px, -6px) rotate(0.35deg); }
+      60% { transform: translate(-6px, -4px) rotate(-0.3deg); }
+      80% { transform: translate(8px, 6px) rotate(0.35deg); }
+    }
+
+    /* =========================================================
+       [STAGE 1]
+       ========================================================= */
+    #stage1 {
+      background-image:
+        linear-gradient(rgba(6,18,26,0.16), rgba(6,18,26,0.34)),
+        url("./assets/images/bg_stage1.jpeg");
+    }
+
+    #stage1.is-restored {
+      background-image:
+        linear-gradient(rgba(6,18,26,0.06), rgba(6,18,26,0.18)),
+        url("./assets/images/bg_stage1_restored.jpeg");
+    }
+
+    #stage1-erosion { top: 31%; left: 24%; }
+    #stage1-transport { top: 49%; left: 50%; }
+    #stage1-deposit { top: 67%; left: 74%; }
+
+    .water-overlay {
+      position: absolute;
+      inset: auto 0 0 0;
+      z-index: 3;
+      height: 46vh;
+      pointer-events: none;
+      background:
+        linear-gradient(to top, rgba(14,165,233,0.44), rgba(56,189,248,0.18)),
+        repeating-linear-gradient(0deg, rgba(255,255,255,0.12) 0 2px, transparent 2px 16px);
+      opacity: 0.75;
+    }
+
+    .water-overlay.is-draining { animation: drain-water 1.45s ease forwards; }
+    @keyframes drain-water { to { transform: translateY(110%); opacity: 0; } }
+
+    /* =========================================================
+       [STAGE 2]
+       ========================================================= */
+    #stage2 {
+      background-image:
+        linear-gradient(rgba(3,7,18,0.18), rgba(3,7,18,0.44)),
+        url("./assets/images/bg_corridor.jpeg");
+    }
+
+    #stage2.is-open {
+      background-image:
+        linear-gradient(rgba(3,7,18,0.10), rgba(3,7,18,0.30)),
+        url("./assets/images/bg_corridor_open.jpeg");
+    }
+
+    .reader-dropzone {
+      top: 48%;
+      left: 56%;
+      border-color: rgba(250,204,21,0.92);
+      box-shadow: 0 0 34px rgba(250,204,21,0.38);
+    }
+
+    /* =========================================================
+       [STAGE 3]
+       ========================================================= */
+    #stage3 {
+      background-image:
+        linear-gradient(rgba(3,7,18,0.16), rgba(3,7,18,0.42)),
+        url("./assets/images/bg_records.jpeg");
+    }
+
+    .clue-hotspot {
+      position: absolute;
+      z-index: 8;
+      border: 3px dashed rgba(250,204,21,0.92);
+      border-radius: 14px;
+      background: rgba(250,204,21,0.12);
+      box-shadow: 0 0 18px rgba(250,204,21,0.45);
+      cursor: pointer;
+      animation: cluePulse 1.4s infinite;
+      transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+    }
+
+    .clue-hotspot::after {
+      content: "조사";
+      position: absolute;
+      top: -36px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 7px 13px;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.76);
+      color: #ffffff;
+      font-size: 16px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .clue-hotspot:hover {
+      transform: scale(1.08);
+      border-color: #fef08a;
+      background: rgba(250,204,21,0.20);
+      box-shadow: 0 0 30px rgba(250,204,21,0.76);
+    }
+
+    .clue-hotspot.is-completed {
+      animation: none;
+      border-style: solid;
+      border-color: rgba(34,197,94,0.92);
+      background: rgba(34,197,94,0.16);
+      pointer-events: none;
+    }
+
+    .clue-hotspot.is-completed::after {
+      content: "획득 완료";
+      background: rgba(20,83,45,0.88);
+    }
+
+    @keyframes cluePulse {
+      0%, 100% { transform: scale(1); opacity: 0.86; }
+      50% { transform: scale(1.05); opacity: 1; }
+    }
+
+    #clue-note { top: 56%; left: 25%; width: 18%; height: 16%; }
+    #clue-map { top: 24%; left: 46%; width: 20%; height: 22%; }
+    #clue-photo { top: 42%; left: 70%; width: 18%; height: 26%; }
+
+    .clue-board {
+      position: absolute;
+      right: 18px;
+      bottom: 138px;
+      z-index: 7;
+      width: min(86vw, 300px);
+      display: grid;
+      gap: 10px;
+    }
+
+    .clue-collector {
+      position: absolute;
+      right: 18px;
+      bottom: 28px;
+      z-index: 9;
+      min-width: 200px;
+      padding: 14px 16px;
+      border: 2px solid rgba(250,204,21,0.72);
+      border-radius: 12px;
+      background: rgba(0,0,0,0.68);
+      color: #ffffff;
+      box-shadow: 0 14px 30px rgba(0,0,0,0.28);
+      font-size: 1.12rem;
+      font-weight: 900;
+      text-align: center;
+    }
+
+    .clue-collector.is-complete {
+      border-color: #22c55e;
+      box-shadow: 0 0 30px rgba(34,197,94,0.68);
+    }
+
+    .clue-summary-card {
+      padding: 12px 14px;
+      border: 1px solid rgba(255,255,255,0.22);
+      border-radius: 10px;
+      background: rgba(0,0,0,0.62);
+      color: #ffffff;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.28);
+      font-size: 1rem;
+      font-weight: 850;
+      line-height: 1.42;
+    }
+
+    .clue-card-modal {
+      position: absolute;
+      inset: 0;
+      z-index: 95;
+      display: grid;
+      place-items: center;
+      padding: 22px;
+      background: rgba(2,8,13,0.56);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 180ms ease, visibility 180ms ease;
+    }
+
+    .clue-card-modal.is-open { opacity: 1; visibility: visible; }
+
+    .clue-card-popup {
+      width: min(90vw, 560px);
+      padding: 30px 28px;
+      border: 2px solid rgba(250,204,21,0.84);
+      border-radius: 16px;
+      background: rgba(255,251,235,0.98);
+      color: #111827;
+      box-shadow: 0 34px 86px rgba(0,0,0,0.48), 0 0 38px rgba(250,204,21,0.34);
+      text-align: center;
+      transform: scale(0.7);
+      opacity: 0;
+      transform-origin: var(--clue-origin-x, 50%) var(--clue-origin-y, 50%);
+    }
+
+    .clue-card-modal.is-open .clue-card-popup { animation: cluePop 320ms cubic-bezier(.2,1.35,.36,1) forwards; }
+    .clue-card-modal.is-flying .clue-card-popup { animation: clueFlyOut 520ms ease-in forwards; }
+
+    .clue-card-kicker { color: #b45309; font-size: 1.08rem; font-weight: 900; }
+    .clue-card-popup h3 { margin-top: 8px; font-size: clamp(1.6rem, 4vw, 2.2rem); font-weight: 900; }
+    .clue-card-popup p { margin-top: 16px; color: #334155; font-size: clamp(1.18rem, 2.8vw, 1.42rem); font-weight: 850; line-height: 1.62; word-break: keep-all; }
+    .clue-card-popup button { margin-top: 24px; min-width: 150px; min-height: 54px; border: 0; border-radius: 10px; color: #fff; background: #0f766e; font-weight: 900; cursor: pointer; }
+
+    @keyframes cluePop {
+      0% { transform: scale(0.7) translateY(18px); opacity: 0; }
+      70% { transform: scale(1.04) translateY(-6px); opacity: 1; }
+      100% { transform: scale(1) translateY(0); opacity: 1; }
+    }
+
+    @keyframes clueFlyOut {
+      0% { transform: scale(1) translate(0,0); opacity: 1; }
+      100% { transform: scale(0.18) translate(140vw,72vh); opacity: 0; }
+    }
+
+    .floating-next {
+      position: absolute;
+      left: 50%;
+      bottom: 32px;
+      z-index: 10;
+      transform: translateX(-50%);
+      display: none;
+    }
+
+    .floating-next.is-visible { display: inline-block; }
+
+    .stage3-complete-panel {
+      position: absolute;
+      left: 50%;
+      bottom: clamp(150px, 18vh, 230px);
+      z-index: 20;
+      width: min(90vw, 620px);
+      transform: translateX(-50%);
+      display: none;
+      gap: 18px;
+      justify-items: center;
+      pointer-events: auto;
+    }
+
+    .stage3-complete-panel.is-visible { display: grid; }
+
+    .stage3-complete-message {
+      padding: 16px 26px;
+      border: 2px solid rgba(34,197,94,0.85);
+      border-radius: 16px;
+      background: rgba(5,46,22,0.82);
+      color: #ffffff;
+      box-shadow: 0 0 28px rgba(34,197,94,0.45);
+      font-size: clamp(1.35rem, 2.8vw, 2rem);
+      font-weight: 900;
+      line-height: 1.25;
+      text-align: center;
+      word-break: keep-all;
+    }
+
+    .stage3-next-button,
+    .stage3-next-button:hover,
+    .stage3-next-button:active {
+      position: relative;
+      transform: none;
+      margin: 0;
+    }
+
+    .stage3-next-button {
+      min-height: 58px;
+      padding: 0 34px;
+      border-radius: 999px;
+      font-size: clamp(1.18rem, 2.4vw, 1.55rem);
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .stage3-next-button:hover { filter: brightness(1.08); }
+
+    /* =========================================================
+       [STAGE 4~10 배경]
+       ========================================================= */
+    #stage4 { background-image: linear-gradient(rgba(3,7,18,0.14), rgba(3,7,18,0.36)), url("./assets/images/bg_riverlab.jpeg"); }
+    #stage5 { background-image: linear-gradient(rgba(3,7,18,0.18), rgba(3,7,18,0.44)), url("./assets/images/bg_rocklab.jpeg"); }
+    #stage6 { background-image: linear-gradient(rgba(24,5,5,0.16), rgba(24,5,5,0.46)), url("./assets/images/bg_volcano_control.jpeg"); }
+    #stage7 { background-image: linear-gradient(rgba(24,5,5,0.16), rgba(24,5,5,0.46)), url("./assets/images/bg_volcano_shelter.jpeg"); }
+    #stage8 { background-image: linear-gradient(rgba(24,5,5,0.08), rgba(24,5,5,0.25)), url("./assets/images/bg_stage3_prequake.jpeg"); }
+    #stage9 { background-image: linear-gradient(rgba(3,7,18,0.16), rgba(3,7,18,0.42)), url("./assets/images/bg_evacuation_route.jpeg"); }
+    #stage10 { background-image: linear-gradient(rgba(255,255,255,0.08), rgba(255,255,255,0.30)), url("./assets/images/bg_rooftop_escape.jpeg"); }
+
+    .quiz-card {
+      position: absolute;
+      top: 45%;
+      left: 50%;
+      z-index: 6;
+      width: min(90vw, 860px);
+      min-height: 170px;
+      padding: 28px 30px;
+      transform: translate(-50%, -50%);
+      border: 1px solid rgba(255,255,255,0.24);
+      border-radius: 16px;
+      background: rgba(0,0,0,0.66);
+      box-shadow: 0 26px 68px rgba(0,0,0,0.40);
+      text-align: center;
+    }
+
+    .quiz-card h3 {
+      color: #ffffff;
+      font-size: clamp(1.55rem, 3.8vw, 2.35rem);
+      font-weight: 900;
+      line-height: 1.35;
+      word-break: keep-all;
+    }
+
+    .quiz-card p {
+      margin-top: 12px;
+      color: #fde68a;
+      font-size: clamp(1.08rem, 2.3vw, 1.32rem);
+      font-weight: 900;
+    }
+
+    .rock-info {
+      position: absolute;
+      left: 50%;
+      bottom: 26px;
+      z-index: 9;
+      width: min(92vw, 820px);
+      padding: 16px 20px;
+      transform: translateX(-50%);
+      border-radius: 12px;
+      background: rgba(0,0,0,0.74);
+      color: #ffffff;
+      font-size: clamp(1.1rem, 2.3vw, 1.35rem);
+      font-weight: 850;
+      line-height: 1.52;
+      text-align: center;
+      display: none;
+    }
+
+    .rock-info.is-visible { display: block; }
+
+    #stage5 .quiz-card {
+      top: 31%;
+      width: min(86vw, 860px);
+      min-height: auto;
+      padding: 26px 30px;
+      border-radius: 20px;
+    }
+
+    #stage5 .quiz-card h3 {
+      font-size: clamp(2rem, 3.5vw, 3rem);
+      line-height: 1.3;
+    }
+
+    #stage5 .quiz-card p {
+      margin-top: 10px;
+      font-size: clamp(1.2rem, 2vw, 1.6rem);
+    }
+
+    #rock-choices.choice-grid {
+      top: 60%;
+      width: min(90vw, 760px);
+      grid-template-columns: repeat(2, minmax(250px, 330px));
+      justify-content: center;
+      align-items: stretch;
+      gap: 28px;
+    }
+
+    #rock-choices .choice-card {
+      width: clamp(250px, 22vw, 330px);
+      min-height: 250px;
+      padding: 18px 18px 16px;
+      border-radius: 18px;
+      grid-template-rows: minmax(150px, 1fr) auto;
+      justify-items: center;
+      align-items: center;
+    }
+
+    #rock-choices .choice-card img {
+      width: 90%;
+      height: 150px;
+      max-height: 170px;
+      object-fit: contain;
+      margin: 0 auto;
+    }
+
+    #rock-choices .choice-card span {
+      margin-top: 12px;
+      font-size: clamp(1.25rem, 1.8vw, 1.7rem);
+      line-height: 1.18;
+      text-align: center;
+    }
+
+    .pressure-bar {
+      height: 28px;
+      margin: 16px auto 0;
+      border-radius: 999px;
+      overflow: hidden;
+      background: rgba(255,255,255,0.16);
+    }
+
+    .pressure-fill {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, #ef4444, #f97316);
+      transition: width 300ms ease, background 300ms ease;
+    }
+
+    .stage6-layout {
+      position: absolute;
+      left: 50%;
+      top: 56%;
+      z-index: 7;
+      width: min(92vw, 1080px);
+      transform: translate(-50%, -50%);
+      display: grid;
+      grid-template-areas:
+        "prompt status"
+        "choices choices";
+      grid-template-columns: minmax(0, 1.25fr) minmax(260px, 0.75fr);
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    #stage6 .quiz-card {
+      position: relative;
+      top: auto;
+      left: auto;
+      grid-area: prompt;
+      width: 100%;
+      min-height: 190px;
+      transform: none;
+      display: grid;
+      align-content: center;
+    }
+
+    .stage6-status {
+      grid-area: status;
+      min-height: 190px;
+      padding: 24px 22px;
+      border: 1px solid rgba(255,255,255,0.24);
+      border-radius: 16px;
+      background: rgba(0,0,0,0.66);
+      box-shadow: 0 26px 68px rgba(0,0,0,0.34);
+      display: grid;
+      align-content: center;
+      gap: 14px;
+      text-align: center;
+    }
+
+    .stage6-status p {
+      color: #fde68a;
+      font-size: clamp(1.18rem, 2.4vw, 1.55rem);
+      font-weight: 900;
+    }
+
+    .stage6-status small {
+      color: #e0f2fe;
+      font-size: clamp(0.95rem, 1.6vw, 1.12rem);
+      font-weight: 800;
+      line-height: 1.45;
+      word-break: keep-all;
+    }
+
+    .stage6-status .pressure-bar {
+      width: min(100%, 360px);
+      margin: 2px auto 0;
+    }
+
+    #volcano-choices.choice-grid {
+      position: relative;
+      left: auto;
+      top: auto;
+      grid-area: choices;
+      width: 100%;
+      transform: none;
+      align-self: start;
+    }
+
+    .ash-zone {
+      width: clamp(220px, 22vw, 340px);
+      min-height: 126px;
+    }
+
+    #stage7 .stage-card {
+      top: 88px;
+      width: min(82vw, 760px);
+      padding: 18px 26px;
+      z-index: 8;
+    }
+
+    #stage7 .stage-card h2 {
+      font-size: clamp(2rem, 3.6vw, 3rem);
+      line-height: 1.15;
+    }
+
+    #stage7 .stage-card p {
+      font-size: clamp(1.18rem, 2vw, 1.55rem);
+      line-height: 1.45;
+    }
+
+    #stage7 .inventory-bar {
+      width: min(92vw, 760px);
+      min-height: 190px;
+      padding: 14px 18px;
+    }
+
+    #stage7 .ash-item img {
+      width: 96%;
+      height: clamp(136px, 10.8vw, 176px);
+      max-height: 176px;
+    }
+
+    #mask-zone { top: 38%; left: 22%; }
+    #towel-zone { top: 49%; left: 50%; }
+    #bag-zone { top: 38%; left: 78%; }
+
+    .wrong-actions {
+      position: absolute;
+      top: 64%;
+      left: 50%;
+      z-index: 7;
+      transform: translateX(-50%);
+      display: grid;
+      grid-template-columns: repeat(3, minmax(150px, 1fr));
+      gap: 12px;
+      width: min(92vw, 780px);
+    }
+
+    .wrong-action {
+      min-height: 86px;
+      padding: 14px 16px;
+      border: 3px solid rgba(248,113,113,0.95);
+      border-radius: 16px;
+      color: #fff1f2;
+      background: linear-gradient(145deg, rgba(153,27,27,0.90), rgba(69,10,10,0.82));
+      box-shadow: 0 16px 34px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.22);
+      font-weight: 900;
+      font-size: clamp(18px, 2vw, 24px);
+      text-shadow: 0 2px 0 rgba(0,0,0,0.45);
+      cursor: pointer;
+      transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    .wrong-action::before {
+      content: "위험 행동";
+      display: block;
+      margin-bottom: 6px;
+      color: #fecaca;
+      font-size: 13px;
+      text-shadow: none;
+    }
+
+    .wrong-action:hover {
+      transform: translateY(-4px);
+      border-color: #fee2e2;
+      box-shadow: 0 22px 42px rgba(0,0,0,0.40), 0 0 24px rgba(248,113,113,0.42);
+    }
+
+    .wrong-action.is-wrong { animation: cardShake 360ms ease; }
+
+    #stage7.danger-flash::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 42;
+      pointer-events: none;
+      background: rgba(239,68,68,0.24);
+      animation: redFlash 360ms ease;
+    }
+
+    @keyframes cardShake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-9px); }
+      40% { transform: translateX(8px); }
+      60% { transform: translateX(-6px); }
+      80% { transform: translateX(5px); }
+    }
+
+    @keyframes redFlash {
+      0% { opacity: 0; }
+      35% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    @media (max-width: 720px) {
+      .wrong-actions {
+        top: 61%;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        width: min(94vw, 520px);
+      }
+
+      .wrong-action {
+        min-height: 68px;
+        padding: 8px 8px;
+        font-size: clamp(13px, 3vw, 16px);
+      }
+
+      .wrong-action::before {
+        margin-bottom: 3px;
+        font-size: 11px;
+      }
+
+      #stage7 .stage-card {
+        top: 82px;
+        width: min(92vw, 620px);
+        padding: 14px 16px;
+      }
+
+      #stage7 .stage-card p {
+        font-size: clamp(1rem, 3.1vw, 1.22rem);
+      }
+    }
+
+    #stage8.is-quake {
+      background-image: linear-gradient(rgba(24,5,5,0.16), rgba(24,5,5,0.45)), url("./assets/images/bg_stage3.jpeg");
+      animation: quakeShake 90ms infinite;
+    }
+
+    #stage8.is-quake::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 30;
+      pointer-events: none;
+      box-shadow: inset 0 0 0 8px rgba(239,68,68,0.72), inset 0 0 48px 18px rgba(220,38,38,0.62);
+      animation: emergencyFlash 520ms infinite;
+    }
+
+    @keyframes quakeShake {
+      0% { transform: translate(0,0) rotate(0deg); }
+      20% { transform: translate(-8px,5px) rotate(-0.6deg); }
+      40% { transform: translate(7px,-6px) rotate(0.55deg); }
+      60% { transform: translate(-6px,-4px) rotate(-0.45deg); }
+      80% { transform: translate(8px,6px) rotate(0.5deg); }
+      100% { transform: translate(0,0) rotate(0deg); }
+    }
+
+    @keyframes emergencyFlash { 0%,100% { opacity: 0.38; } 50% { opacity: 1; } }
+
+    .quake-warning {
+      position: absolute;
+      top: clamp(140px, 18vh, 190px);
+      left: 50%;
+      z-index: 35;
+      width: min(82vw, 860px);
+      padding: 20px 32px;
+      transform: translateX(-50%);
+      border-radius: 18px;
+      background: rgba(0,0,0,0.74);
+      color: #ffffff;
+      text-align: center;
+      font-size: clamp(1.45rem, 3.2vw, 2.35rem);
+      font-weight: 900;
+      line-height: 1.34;
+      text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;
+      display: none;
+    }
+
+    .quake-warning.is-visible { display: block; }
+
+    .quake-warning.is-safe {
+      border: 2px solid rgba(34,197,94,0.82);
+      background: rgba(5,46,22,0.82);
+      box-shadow: 0 0 28px rgba(34,197,94,0.38);
+    }
+
+    .stage8-sub-message {
+      position: absolute;
+      left: 50%;
+      bottom: clamp(180px, 20vh, 250px);
+      z-index: 34;
+      width: min(72vw, 620px);
+      padding: 14px 24px;
+      transform: translateX(-50%);
+      border: 2px solid rgba(125,211,252,0.78);
+      border-radius: 16px;
+      background: rgba(8,47,73,0.82);
+      color: #ffffff;
+      box-shadow: 0 16px 36px rgba(0,0,0,0.32);
+      display: none;
+      font-size: clamp(1.14rem, 2.1vw, 1.65rem);
+      font-weight: 900;
+      line-height: 1.38;
+      text-align: center;
+      text-shadow: 0 2px 0 rgba(0,0,0,0.45);
+    }
+
+    .stage8-sub-message.is-visible { display: block; }
+
+    #desk-dropzone {
+      /* ★★★★★ 여기서 책상 아래 드롭존 위치 수정하세요! ★★★★★ */
+      position: absolute;
+      bottom: 18%;
+      left: 43%;
+      width: 18%;
+      height: 18%;
+      z-index: 7;
+      border: 5px dashed rgba(255,255,255,0.9);
+      border-radius: 14px;
+      background: transparent;
+      display: grid;
+      place-items: center;
+      padding: 12px;
+      color: #ffffff;
+      text-align: center;
+      font-size: clamp(1rem, 2vw, 1.3rem);
+      font-weight: 900;
+      text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;
+    }
+
+    #exit-door {
+      /* ★★★★★ 여기서 비상구 클릭 영역 위치 수정하세요! ★★★★★ */
+      position: absolute;
+      top: 26%;
+      left: 25%;
+      width: 12%;
+      height: 50%;
+      z-index: 8;
+      border: 3px solid rgba(250, 204, 21, 0);
+      border-radius: 12px;
+      background: transparent;
+      opacity: 0;
+      cursor: pointer;
+      transition: opacity 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+    }
+
+    #exit-door.is-active {
+      opacity: 1;
+      border-color: rgba(250, 204, 21, 0.9);
+      box-shadow: 0 0 0 5px rgba(250, 204, 21, 0.2), 0 0 34px rgba(250, 204, 21, 0.62);
+    }
+
+    #exit-door.is-active::after {
+      content: "비상구";
+      position: absolute;
+      top: -42px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(20, 83, 45, 0.88);
+      color: #ffffff;
+      font-size: 1rem;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .stage8-timer {
+      position: absolute;
+      top: clamp(72px, 9vh, 110px);
+      left: 50%;
+      z-index: 36;
+      min-width: 168px;
+      padding: 10px 22px;
+      transform: translateX(-50%);
+      border-radius: 12px;
+      border: 2px solid rgba(248,113,113,0.85);
+      background: rgba(0,0,0,0.66);
+      color: #ff3838;
+      text-align: center;
+      font-size: clamp(2.2rem, 6vw, 4.6rem);
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .certificate {
+      width: min(88vw, 540px);
+      min-height: min(84vh, 720px);
+      aspect-ratio: 3 / 4.35;
+      padding: clamp(34px, 6vw, 64px) clamp(26px, 5vw, 48px);
+      border: 10px double #d4af37;
+      border-radius: 8px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.98), rgba(255,251,235,0.96));
+      color: #111827;
+      display: grid;
+      align-content: center;
+      justify-items: center;
+      text-align: center;
+      box-shadow: 0 34px 90px rgba(15,23,42,0.22), inset 0 0 0 2px rgba(212,175,55,0.34);
+      transform: translate(-50%, -50%) scale(0.85);
+    }
+
+    .certificate h2 { font-size: clamp(2rem, 5vw, 3.6rem); font-weight: 900; line-height: 1.15; }
+    .certificate p { margin-top: 22px; color: #334155; font-size: clamp(1.12rem, 2.6vw, 1.42rem); font-weight: 850; line-height: 1.6; word-break: keep-all; }
+
+    .ending-panel.certificate {
+      width: min(94vw, 1100px);
+      min-height: auto;
+      aspect-ratio: auto;
+      padding: clamp(18px, 3vw, 34px);
+      border: 0;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.20);
+      box-shadow: 0 34px 90px rgba(15,23,42,0.30);
+      backdrop-filter: blur(10px);
+      gap: 18px;
+    }
+
+    .ending-title {
+      color: #0f172a;
+      font-size: clamp(1.45rem, 3vw, 2.4rem);
+      font-weight: 900;
+      text-shadow: 0 1px 0 rgba(255,255,255,0.88);
+    }
+
+    .ending-certificate {
+      display: block;
+      width: min(78vw, 980px);
+      max-width: 980px;
+      height: auto;
+      max-height: min(70vh, 720px);
+      object-fit: contain;
+      border-radius: 16px;
+      box-shadow: 0 22px 58px rgba(0,0,0,0.34), 0 0 0 1px rgba(255,255,255,0.42);
+    }
+
+    .certificate-fallback { display: none; }
+
+    .certificate-fallback.is-visible {
+      display: block;
+      max-width: 720px;
+      padding: 28px;
+      border: 8px double #d4af37;
+      border-radius: 12px;
+      background: rgba(255,251,235,0.96);
+    }
+
+    .ending-restart-btn {
+      min-height: 64px;
+      padding: 16px 38px;
+      border-radius: 14px;
+      font-size: clamp(1.25rem, 2.4vw, 1.55rem);
+    }
+
+    #stage10.is-celebrating {
+      background:
+        radial-gradient(circle at center, rgba(255,255,255,0.96), rgba(255,255,255,0.78) 34%, rgba(254,243,199,0.56) 100%),
+        linear-gradient(rgba(255,255,255,0.08), rgba(255,255,255,0.30)),
+        url("./assets/images/bg_rooftop_escape.jpeg");
+      animation: finalGlow 2100ms ease-out both;
+    }
+
+    #stage10.is-celebrating .certificate {
+      animation: certificatePop 760ms cubic-bezier(.16, 1.24, .42, 1) forwards;
+    }
+
+    .final-sparkles {
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      pointer-events: none;
+      opacity: 0;
+      background-image:
+        radial-gradient(circle, rgba(250,204,21,0.92) 0 4px, transparent 5px),
+        radial-gradient(circle, rgba(56,189,248,0.78) 0 3px, transparent 4px),
+        radial-gradient(circle, rgba(244,114,182,0.78) 0 3px, transparent 4px);
+      background-size: 120px 120px, 170px 170px, 210px 210px;
+      background-position: 8% -20%, 80% -10%, 50% -18%;
+    }
+
+    #stage10.is-celebrating .final-sparkles {
+      animation: confettiFall 2200ms ease-out forwards;
+    }
+
+    @keyframes certificatePop {
+      0% { opacity: 0; transform: translate(-50%, -50%) scale(0.85); }
+      68% { opacity: 1; transform: translate(-50%, -50%) scale(1.04); }
+      100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    }
+
+    @keyframes finalGlow {
+      0% { filter: brightness(1); }
+      38% { filter: brightness(1.5); }
+      100% { filter: brightness(1.08); }
+    }
+
+    @keyframes confettiFall {
+      0% { opacity: 0; transform: translateY(-12%); }
+      18% { opacity: 1; }
+      100% { opacity: 0.9; transform: translateY(28%); }
+    }
+
+    .modal-backdrop {
+      position: absolute;
+      inset: 0;
+      z-index: 96;
+      display: grid;
+      place-items: center;
+      padding: 22px;
+      background: rgba(2,8,13,0.66);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 260ms ease, visibility 260ms ease;
+    }
+
+    .modal-backdrop.is-open { opacity: 1; visibility: visible; }
+
+    .modal {
+      width: min(90vw, 500px);
+      padding: 32px 26px;
+      border-radius: 14px;
+      background: rgba(248,250,252,0.97);
+      color: #111827;
+      text-align: center;
+      box-shadow: 0 34px 86px rgba(0,0,0,0.48);
+    }
+
+    .modal h2 { font-size: 1.85rem; font-weight: 900; }
+    .modal p { margin-top: 12px; color: #334155; font-size: 1.22rem; font-weight: 800; line-height: 1.5; }
+
+    @media (max-width: 760px) {
+      .hud { grid-template-columns: auto 1fr auto; }
+      .hud-progress { display: none; }
+      .stage-card { top: 84px; }
+      .choice-grid { grid-template-columns: 1fr; top: 61%; }
+      .drop-zone { width: min(86vw, 320px); }
+      .item-card,
+      .text-item {
+        width: clamp(132px, 34vw, 168px);
+        min-width: clamp(132px, 34vw, 168px);
+        min-height: clamp(150px, 38vw, 188px);
+      }
+      .item-card img,
+      .choice-card img {
+        width: 94%;
+        height: clamp(106px, 28vw, 142px);
+        max-height: 142px;
+      }
+      .stage6-layout {
+        top: 58%;
+        grid-template-areas:
+          "prompt"
+          "status"
+          "choices";
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+      #stage6 .quiz-card,
+      .stage6-status {
+        min-height: auto;
+        padding: 18px 16px;
+      }
+      #volcano-choices.choice-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      #stage5 .quiz-card {
+        top: 30%;
+        width: min(92vw, 680px);
+        padding: 18px 16px;
+      }
+      #rock-choices.choice-grid {
+        top: 63%;
+        width: min(94vw, 620px);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+      #rock-choices .choice-card {
+        width: 100%;
+        min-height: 190px;
+        padding: 12px;
+      }
+      #rock-choices .choice-card img {
+        height: clamp(106px, 28vw, 142px);
+        max-height: 142px;
+      }
+      #stage1-erosion { top: 30%; left: 50%; }
+      #stage1-transport { top: 47%; left: 50%; }
+      #stage1-deposit { top: 64%; left: 50%; }
+      .inventory-bar { max-width: 94vw; overflow-x: auto; }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="game-root">
+    <header class="hud" aria-label="게임 진행 정보">
+      <div id="hud-stage" class="hud-stage">INTRO</div>
+      <div id="hud-title" class="hud-title">비상! 지질 연구소 탈출 작전</div>
+      <div id="hud-progress" class="hud-progress"></div>
+      <button id="bgm-button" class="bgm-button" type="button">BGM 켜기</button>
+    </header>
+
+    <div id="emergency-overlay" class="emergency-overlay" aria-hidden="true">
+      <div class="emergency-light emergency-light-left"></div>
+      <div class="emergency-light emergency-light-right"></div>
+      <div id="emergency-message" class="emergency-message">비상 상황 발생!</div>
+    </div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <!-- INTRO -->
+    <section id="intro" class="screen is-active">
+      <div class="big-panel">
+        <h1 class="big-title">비상! 지질 연구소 탈출 작전</h1>
+        <div class="tutorial-step is-active" data-step="0">
+          <p class="big-copy"><strong>연구소 비상 사태!</strong><br>대지진과 화산 활동으로 지질 연구소의 자동 시스템이 멈췄습니다. 연구소 곳곳의 문제를 해결하고 안전하게 탈출해야 합니다.</p>
+        </div>
+        <div class="tutorial-step" data-step="1">
+          <p class="big-copy"><strong>과학 지식으로 탈출하라!</strong><br>흐르는 물의 작용, 강 주변 지형, 암석, 화산 분출물, 그리고 재난 대피 지식을 활용하세요.</p>
+        </div>
+        <div class="tutorial-step" data-step="2">
+          <p class="big-copy"><strong>이렇게 플레이하세요</strong><br>- 빛나는 곳을 클릭해 조사하기<br>- 아이템은 드래그해서 사용하기<br>- 단서를 읽고 정답 추리하기<br>- 재난 상황에서는 올바른 안전 행동 선택하기</p>
+        </div>
+        <div id="intro-dots" class="intro-dots" aria-hidden="true"><span>●</span><span>●</span><span>●</span></div>
+        <div id="intro-actions" class="intro-actions" data-step="0">
+          <button id="intro-prev" class="secondary-button" type="button">이전</button>
+          <button id="intro-next" class="secondary-button" type="button">다음</button>
+          <button id="intro-skip" class="secondary-button" type="button">건너뛰기</button>
+          <button id="start-button" class="primary-button" type="button">게임 시작</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- STAGE 1 -->
+    <section id="stage1" class="screen">
+      <div id="water-overlay" class="water-overlay"></div>
+      <section class="stage-card">
+        <h2>STAGE 1. 침수 연구실 복구</h2>
+        <p>침식, 운반, 퇴적 작용을 알맞은 위치에 배치해 배수 시스템을 복구하세요.</p>
+      </section>
+      <div id="stage1-erosion" class="drop-zone stage1-zone" data-accept="erosion">물이 거세게 부딪혀 돌과 흙을 깎아내는 곳</div>
+      <div id="stage1-transport" class="drop-zone stage1-zone" data-accept="transport">깎여 나간 부스러기들이 물을 타고 이동하는 통로</div>
+      <div id="stage1-deposit" class="drop-zone stage1-zone" data-accept="deposit">물이 잔잔해져 알갱이들이 차곡차곡 쌓이는 바닥</div>
+      <section class="inventory-bar">
+        <button class="item-card stage1-item" type="button" draggable="true" data-item="erosion"><img src="./assets/images/item_erosion.jpeg" alt="침식" onerror="this.style.display='none'" /><span>침식</span></button>
+        <button class="item-card stage1-item" type="button" draggable="true" data-item="transport"><img src="./assets/images/item_transport.jpeg" alt="운반" onerror="this.style.display='none'" /><span>운반</span></button>
+        <button class="item-card stage1-item" type="button" draggable="true" data-item="deposit"><img src="./assets/images/item_deposit.jpeg" alt="퇴적" onerror="this.style.display='none'" /><span>퇴적</span></button>
+      </section>
+    </section>
+
+    <!-- STAGE 2 -->
+    <section id="stage2" class="screen">
+      <section class="stage-card">
+        <h2>STAGE 2. 비상 복도 출입증 인증</h2>
+        <p>출입증을 카드 리더기에 드래그해서 문을 여세요. 클릭만으로는 열리지 않습니다.</p>
+      </section>
+      <div id="card-reader" class="drop-zone reader-dropzone" data-accept="access-card">카드 리더기<br>출입증을 여기에 올리세요</div>
+      <section class="inventory-bar">
+        <button id="access-card-item" class="item-card" type="button" draggable="true" data-item="access-card"><img src="./assets/images/item_access_card.png" alt="출입증" onerror="this.style.display='none'" /><span>출입증</span></button>
+      </section>
+    </section>
+
+    <!-- STAGE 3 -->
+    <section id="stage3" class="screen">
+      <section class="stage-card">
+        <h2>STAGE 3. 연구기록실</h2>
+        <p>연구기록실에서 강 지형 단서 3개를 찾아라! 노란색으로 빛나는 조사 지점을 클릭해 단서를 수집하세요.</p>
+      </section>
+      <button id="clue-note" class="clue-hotspot" type="button" data-clue="0" aria-label="책상 위 연구노트"></button>
+      <button id="clue-map" class="clue-hotspot" type="button" data-clue="1" aria-label="벽 지도"></button>
+      <button id="clue-photo" class="clue-hotspot" type="button" data-clue="2" aria-label="사진 자료"></button>
+      <div id="clue-board" class="clue-board"></div>
+      <div id="clue-collector" class="clue-collector">단서 0 / 3</div>
+      <div id="stage3-complete-panel" class="stage3-complete-panel">
+        <div class="stage3-complete-message">강 지형 시뮬레이터 잠금 해제!</div>
+        <button id="to-stage4-button" class="next-button stage3-next-button" type="button">강 지형 분석실로 이동</button>
+      </div>
+      <div id="clue-card-modal" class="clue-card-modal" aria-hidden="true">
+        <section class="clue-card-popup" role="dialog" aria-modal="true" aria-labelledby="clue-card-title">
+          <div class="clue-card-kicker">단서 획득!</div>
+          <h3 id="clue-card-title"></h3>
+          <p id="clue-card-body"></p>
+          <button id="clue-confirm-button" type="button">확인</button>
+        </section>
+      </div>
+    </section>
+
+    <!-- STAGE 4 -->
+    <section id="stage4" class="screen">
+      <section class="stage-card"><h2>STAGE 4. 강 지형 랜덤 퀴즈</h2><p>단서를 바탕으로 상류, 중류, 하류를 판단하세요.</p></section>
+      <div class="quiz-card"><h3 id="river-question"></h3><p id="river-progress">강 지형 분석 1 / 3</p></div>
+      <div id="river-choices" class="choice-grid"></div>
+    </section>
+
+    <!-- STAGE 5 -->
+    <section id="stage5" class="screen">
+      <section class="stage-card"><h2>STAGE 5. 암석 분석실</h2><p>암석 카드를 눌러 분석한 뒤, 랜덤 문제의 답을 고르세요.</p></section>
+      <div class="quiz-card"><h3 id="rock-question"></h3><p id="rock-progress">암석 분석 1 / 2</p></div>
+      <div id="rock-choices" class="choice-grid"></div>
+      <div id="rock-info" class="rock-info"></div>
+    </section>
+
+    <!-- STAGE 6 -->
+    <section id="stage6" class="screen">
+      <section class="stage-card"><h2>STAGE 6. 화산 제어실</h2><p>설명에 맞는 화산 분출물을 골라 압력을 낮추세요.</p></section>
+      <div class="stage6-layout">
+        <div class="quiz-card stage6-prompt">
+          <h3 id="volcano-question"></h3>
+        </div>
+        <aside class="stage6-status" aria-label="화산 압력 진행 상태">
+          <p id="volcano-progress">화산 분석 1 / 4</p>
+          <div class="pressure-bar"><div id="pressure-fill" class="pressure-fill"></div></div>
+          <small>정답을 고를 때마다 압력이 25%씩 낮아집니다.</small>
+        </aside>
+        <div id="volcano-choices" class="choice-grid"></div>
+      </div>
+    </section>
+
+    <!-- STAGE 7 -->
+    <section id="stage7" class="screen">
+      <section class="stage-card">
+        <h2>STAGE 7. 화산재 대피실</h2>
+        <p>화산재가 날아오고 있습니다.<br>초록색 영역에 안전 물품 3가지를 드래그하세요.<br>빨간 카드는 위험 행동입니다.</p>
+      </section>
+      <div id="mask-zone" class="drop-zone ash-zone" data-accept="mask">호흡기 보호<br>마스크 착용</div>
+      <div id="towel-zone" class="drop-zone ash-zone" data-accept="towel">문틈 막기<br>젖은 수건 사용</div>
+      <div id="bag-zone" class="drop-zone ash-zone" data-accept="bag">비상 물품<br>재난 가방 준비</div>
+      <section class="inventory-bar">
+        <button class="item-card ash-item" type="button" draggable="true" data-item="mask"><img src="./assets/images/item_safety_mask.png" alt="방진 마스크" onerror="this.style.display='none'" /><span>방진 마스크</span></button>
+        <button class="item-card ash-item" type="button" draggable="true" data-item="towel"><img src="./assets/images/item_wet_towel.png" alt="젖은 수건" onerror="this.style.display='none'" /><span>젖은 수건</span></button>
+        <button class="item-card ash-item" type="button" draggable="true" data-item="bag"><img src="./assets/images/item_emergency_bag.png" alt="재난 가방" onerror="this.style.display='none'" /><span>재난 가방</span></button>
+      </section>
+      <div class="wrong-actions">
+        <button class="wrong-action" type="button" data-danger="window">창문 열기</button>
+        <button class="wrong-action" type="button" data-danger="outside">밖으로 뛰어나가기</button>
+        <button class="wrong-action" type="button" data-danger="vent">환기구 켜기</button>
+      </div>
+    </section>
+
+    <!-- STAGE 8 -->
+    <section id="stage8" class="screen">
+      <div id="stage8-timer" class="stage8-timer">00:15</div>
+      <div id="quake-warning" class="quake-warning">지진 발생! 흔들림이 멈출 때까지 머리를 보호하고 책상 아래로 대피하세요!</div>
+      <div id="stage8-sub-message" class="stage8-sub-message"></div>
+      <div id="desk-dropzone" data-accept="cushion">방석으로 머리를 감싸고 이곳으로 숨으세요!</div>
+      <div id="exit-door" aria-label="비상구 클릭 영역" role="button" tabindex="0"></div>
+      <section class="inventory-bar">
+        <button id="cushion-item" class="item-card" type="button" draggable="true" data-item="cushion"><img src="./assets/images/item_cushion.jpeg" alt="안전 방석" onerror="this.style.display='none'" /><span>안전 방석</span></button>
+      </section>
+      <div id="fail-modal" class="modal-backdrop">
+        <section class="modal">
+          <h2>대피 실패</h2>
+          <p>지진이 나면 머리를 보호하고 튼튼한 책상 아래로 대피해야 합니다.</p>
+          <button id="retry-stage8-button" class="next-button" type="button">다시 시도</button>
+        </section>
+      </div>
+    </section>
+
+    <!-- STAGE 9 -->
+    <section id="stage9" class="screen">
+      <section class="stage-card"><h2>STAGE 9. 비상 탈출로 판단</h2><p>흔들림이 멈췄습니다. 이제 어디로 이동해야 할까요?</p></section>
+      <div id="evacuation-choices" class="choice-grid"></div>
+    </section>
+
+    <!-- STAGE 10 -->
+    <section id="stage10" class="screen">
+      <div class="final-sparkles" aria-hidden="true"></div>
+      <div class="big-panel certificate ending-panel">
+        <p class="ending-title">지질 연구소 탈출 성공!</p>
+        <img class="ending-certificate" src="./assets/images/ui_certificate_geology_safety.png" alt="지질 안전 탐사대 수료증" data-fallbacks="./assets/images/ui_certificate_final.png|./assets/images/지질_안전_탐사대_수료증_디자인.png" onerror="loadCertificateFallback(this)" />
+        <div id="certificate-fallback" class="certificate-fallback">
+          <h2>지질 연구소 탈출 성공!</h2>
+          <p>흐르는 물, 암석, 화산, 재난 안전 지식을 활용해 모든 위기를 해결했습니다.</p>
+          <p><strong>지질 안전 탐사대 수료증</strong><br>땅의 변화와 재난 안전 행동을 익히고 지질 연구소 탈출 임무를 완수했습니다.</p>
+        </div>
+        <button id="restart-button" class="primary-button ending-restart-btn" type="button">다시하기</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    /* =========================================================
+       [JavaScript 섹션]
+       - BGM은 기본 OFF, 사용자가 HUD 버튼으로 켭니다.
+       - SFX는 Web Audio API로 합성합니다.
+       ========================================================= */
+
+    const gameState = {
+      currentStage: "intro",
+      introStep: 0,
+      hasAccessCard: false,
+      foundClues: [],
+      stage1Solved: { erosion: false, transport: false, deposit: false },
+      riverQuestions: [],
+      riverIndex: 0,
+      rockQuestions: [],
+      rockIndex: 0,
+      volcanoQuestions: [],
+      volcanoIndex: 0,
+      volcanoCorrectCount: 0,
+      ashSolved: { mask: false, towel: false, bag: false },
+      stage8Timer: null,
+      stage8TimeLeft: 15,
+      stage8ReadyToExit: false,
+      reducedEffects: false,
+      activeStageTimers: [],
+      stage3Unlocked: false,
+      bgmEnabled: false,
+      bgmStarted: false
+    };
+
+    const stageMeta = {
+      intro: { label: "INTRO", title: "비상! 지질 연구소 탈출 작전", progress: "" },
+      stage1: { label: "STAGE 1 / 10", title: "침수 연구실 복구", progress: "물의 작용" },
+      stage2: { label: "STAGE 2 / 10", title: "비상 복도 출입증 인증", progress: "드래그 인증" },
+      stage3: { label: "STAGE 3 / 10", title: "연구기록실 단서 찾기", progress: "단서 0 / 3" },
+      stage4: { label: "STAGE 4 / 10", title: "강 지형 랜덤 퀴즈", progress: "1 / 3" },
+      stage5: { label: "STAGE 5 / 10", title: "암석 분석실", progress: "1 / 2" },
+      stage6: { label: "STAGE 6 / 10", title: "화산 제어실", progress: "0 / 4" },
+      stage7: { label: "STAGE 7 / 10", title: "화산재 대피실", progress: "0 / 3" },
+      stage8: { label: "STAGE 8 / 10", title: "지진 대피 사무실", progress: "15초" },
+      stage9: { label: "STAGE 9 / 10", title: "비상 탈출로 판단", progress: "안전 선택" },
+      stage10: { label: "STAGE 10 / 10", title: "옥상 탈출 성공", progress: "완료" }
+    };
+
+    const screens = document.querySelectorAll(".screen");
+    const hudStage = document.getElementById("hud-stage");
+    const hudTitle = document.getElementById("hud-title");
+    const hudProgress = document.getElementById("hud-progress");
+    const bgmButton = document.getElementById("bgm-button");
+    const toast = document.getElementById("toast");
+    const emergencyOverlay = document.getElementById("emergency-overlay");
+    const emergencyMessage = document.getElementById("emergency-message");
+    let toastTimer = null;
+
+    const AudioManager = {
+      bgm: null,
+      bgmEnabled: false,
+      bgmStarted: false,
+      context: null,
+      sirenTimer: null,
+      rumbleNode: null,
+      rumbleGain: null,
+
+      init() {
+        try {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext && !this.context) this.context = new AudioContext();
+          if (this.context && this.context.state === "suspended") this.context.resume();
+          if (!this.bgm) {
+            this.bgm = new Audio("./assets/audio/bgm/bgm_main_loop.mp3");
+            this.bgm.loop = true;
+            this.bgm.volume = 0.3;
+          }
+        } catch (error) {
+          console.warn("Audio init failed", error);
+        }
+      },
+
+      toggleBgm() {
+        this.init();
+        this.bgmEnabled = !this.bgmEnabled;
+        gameState.bgmEnabled = this.bgmEnabled;
+        bgmButton.textContent = this.bgmEnabled ? "BGM 끄기" : "BGM 켜기";
+        if (!this.bgm) return;
+        if (this.bgmEnabled) {
+          this.bgm.muted = false;
+          this.bgm.play().then(() => {
+            this.bgmStarted = true;
+            gameState.bgmStarted = true;
+          }).catch((error) => console.warn("BGM play failed", error));
+        } else {
+          this.bgm.pause();
+        }
+      },
+
+      stopAndResetBgm() {
+        if (this.bgm) {
+          this.bgm.pause();
+          this.bgm.currentTime = 0;
+          this.bgm.muted = false;
+        }
+        this.bgmEnabled = false;
+        this.bgmStarted = false;
+        gameState.bgmEnabled = false;
+        gameState.bgmStarted = false;
+        bgmButton.textContent = "BGM 켜기";
+      },
+
+      playSfx(name) {
+        this.init();
+        if (!this.context) return;
+        if (name === "finalSuccess") {
+          this.playFinalSuccess();
+          return;
+        }
+        const map = {
+          click: [440, 0.06],
+          hoverSoft: [620, 0.04],
+          correct: [880, 0.09, 1318],
+          wrong: [180, 0.16],
+          unlock: [520, 0.08, 780],
+          door: [360, 0.1, 620],
+          doorOpen: [360, 0.1, 620],
+          pickup: [660, 0.08],
+          drain: [260, 0.22],
+          scan: [720, 0.1],
+          alarm: [160, 0.22],
+          ashAlert: [300, 0.12, 210],
+          rumble: [70, 0.28],
+          powerRestore: [480, 0.1, 960],
+          quake: [70, 0.28],
+          success: [660, 0.12, 990]
+        };
+        const [freq, duration, second] = map[name] || map.click;
+        const now = this.context.currentTime;
+        const playTone = (frequency, start, len) => {
+          const osc = this.context.createOscillator();
+          const gain = this.context.createGain();
+          osc.type = name === "wrong" || name === "alarm" || name === "quake" ? "sawtooth" : "triangle";
+          osc.frequency.setValueAtTime(frequency, start);
+          gain.gain.setValueAtTime(0.0001, start);
+          gain.gain.exponentialRampToValueAtTime(0.18, start + 0.015);
+          gain.gain.exponentialRampToValueAtTime(0.0001, start + len);
+          osc.connect(gain);
+          gain.connect(this.context.destination);
+          osc.start(start);
+          osc.stop(start + len + 0.03);
+        };
+        try {
+          playTone(freq, now, duration);
+          if (second) playTone(second, now + duration + 0.035, duration * 1.2);
+        } catch (error) {
+          console.warn("SFX failed", error);
+        }
+      },
+
+      playFinalSuccess() {
+        this.init();
+        if (!this.context) return;
+        const now = this.context.currentTime;
+        const notes = [523.25, 659.25, 783.99, 1046.5, 1318.51];
+        const playNote = (frequency, start, duration, volume = 0.18) => {
+          const osc = this.context.createOscillator();
+          const gain = this.context.createGain();
+          osc.type = "triangle";
+          osc.frequency.setValueAtTime(frequency, start);
+          gain.gain.setValueAtTime(0.0001, start);
+          gain.gain.exponentialRampToValueAtTime(volume, start + 0.018);
+          gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+          osc.connect(gain);
+          gain.connect(this.context.destination);
+          osc.start(start);
+          osc.stop(start + duration + 0.05);
+        };
+        try {
+          notes.forEach((note, index) => playNote(note, now + index * 0.16, 0.22));
+          [523.25, 659.25, 783.99, 1046.5].forEach((note) => playNote(note, now + 0.96, 0.95, 0.13));
+          [783.99, 987.77, 1318.51].forEach((note) => playNote(note, now + 1.48, 0.62, 0.12));
+        } catch (error) {
+          console.warn("Final SFX failed", error);
+        }
+      },
+
+      startEmergencySiren(type = "siren") {
+        this.init();
+        if (!this.context || this.sirenTimer) return;
+        const play = () => this.playSfx(type === "ash" ? "ashAlert" : "alarm");
+        play();
+        this.sirenTimer = setInterval(play, 1100);
+      },
+
+      stopEmergencySiren() {
+        clearInterval(this.sirenTimer);
+        this.sirenTimer = null;
+      },
+
+      startRumble() {
+        this.init();
+        if (!this.context || this.rumbleNode) return;
+        try {
+          const osc = this.context.createOscillator();
+          const gain = this.context.createGain();
+          osc.type = "sawtooth";
+          osc.frequency.value = 58;
+          gain.gain.value = 0.035;
+          osc.connect(gain);
+          gain.connect(this.context.destination);
+          osc.start();
+          this.rumbleNode = osc;
+          this.rumbleGain = gain;
+        } catch (error) {
+          console.warn("Rumble failed", error);
+        }
+      },
+
+      stopRumble() {
+        if (this.rumbleNode) {
+          try { this.rumbleNode.stop(); } catch (error) {}
+          try { this.rumbleNode.disconnect(); } catch (error) {}
+        }
+        if (this.rumbleGain) {
+          try { this.rumbleGain.disconnect(); } catch (error) {}
+        }
+        this.rumbleNode = null;
+        this.rumbleGain = null;
+      }
+    };
+
+    function showToast(message, type = "info", duration = 2700) {
+      clearTimeout(toastTimer);
+      toast.className = `toast ${type} is-visible`;
+      toast.textContent = message;
+      toastTimer = setTimeout(() => toast.classList.remove("is-visible"), duration);
+    }
+
+    function clearToast() {
+      clearTimeout(toastTimer);
+      toastTimer = null;
+      toast.className = "toast";
+      toast.textContent = "";
+    }
+
+    function scheduleStageTimeout(callback, delay) {
+      const timeoutId = setTimeout(() => {
+        gameState.activeStageTimers = gameState.activeStageTimers.filter((id) => id !== timeoutId);
+        callback();
+      }, delay);
+      gameState.activeStageTimers.push(timeoutId);
+      return timeoutId;
+    }
+
+    function clearStageTimers() {
+      clearStage8Timer();
+      gameState.activeStageTimers.forEach((timeoutId) => clearTimeout(timeoutId));
+      gameState.activeStageTimers = [];
+    }
+
+    function clearStageMessages() {
+      const stage3Panel = document.getElementById("stage3-complete-panel");
+      if (stage3Panel) stage3Panel.classList.remove("is-visible");
+      const stage8Main = document.getElementById("quake-warning");
+      if (stage8Main) stage8Main.classList.remove("is-visible", "is-safe");
+      const stage8Sub = document.getElementById("stage8-sub-message");
+      if (stage8Sub) {
+        stage8Sub.textContent = "";
+        stage8Sub.classList.remove("is-visible");
+      }
+      const failModal = document.getElementById("fail-modal");
+      if (failModal) failModal.classList.remove("is-open");
+    }
+
+    function clearAllTransientUI() {
+      clearStageTimers();
+      clearToast();
+      clearStageMessages();
+      hideEmergency();
+    }
+
+    function showEmergency(message, options = {}) {
+      emergencyMessage.textContent = message;
+      emergencyOverlay.className = `emergency-overlay is-active level-${options.level || 2}`;
+      emergencyOverlay.setAttribute("aria-hidden", "false");
+      const current = document.getElementById(gameState.currentStage);
+      if (current) {
+        current.classList.add("is-emergency");
+        if (options.shake && !gameState.reducedEffects) {
+          current.classList.add(options.strong ? "is-strong-shaking" : "is-soft-shaking");
+        }
+      }
+      if (options.siren) AudioManager.startEmergencySiren(options.sirenType || "siren");
+      if (options.rumble) AudioManager.startRumble();
+    }
+
+    function hideEmergency() {
+      emergencyOverlay.className = "emergency-overlay";
+      emergencyOverlay.setAttribute("aria-hidden", "true");
+      emergencyMessage.classList.remove("is-stage8-hidden");
+      AudioManager.stopEmergencySiren();
+      AudioManager.stopRumble();
+      screens.forEach((screen) => {
+        screen.classList.remove("is-emergency", "is-soft-shaking", "is-strong-shaking");
+      });
+    }
+
+    function switchStage(stageId) {
+      clearAllTransientUI();
+      screens.forEach((screen) => screen.classList.remove("is-active"));
+      document.getElementById(stageId).classList.add("is-active");
+      gameState.currentStage = stageId;
+      const meta = stageMeta[stageId];
+      hudStage.textContent = meta.label;
+      hudTitle.textContent = meta.title;
+      hudProgress.textContent = meta.progress;
+
+      const enter = {
+        stage1: enterStage1,
+        stage2: enterStage2,
+        stage3: enterStage3,
+        stage4: enterStage4,
+        stage5: enterStage5,
+        stage6: enterStage6,
+        stage7: enterStage7,
+        stage8: enterStage8,
+        stage9: enterStage9,
+        stage10: enterStage10
+      }[stageId];
+      if (enter) enter();
+    }
+
+    function shuffle(array) {
+      return [...array].sort(() => Math.random() - 0.5);
+    }
+
+    function pickRandom(array, count) {
+      return shuffle(array).slice(0, count);
+    }
+
+    function setupDraggable(selector) {
+      document.querySelectorAll(selector).forEach((item) => {
+        item.addEventListener("dragstart", (event) => {
+          if (item.disabled) {
+            event.preventDefault();
+            return;
+          }
+          event.dataTransfer.setData("text/plain", item.dataset.item);
+          event.dataTransfer.effectAllowed = "move";
+        });
+      });
+    }
+
+    function setupDropZone(zone, onDrop) {
+      zone.addEventListener("dragover", (event) => {
+        if (zone.dataset.filled === "true") return;
+        event.preventDefault();
+        zone.classList.add("is-hovered");
+      });
+      zone.addEventListener("dragleave", () => zone.classList.remove("is-hovered"));
+      zone.addEventListener("drop", (event) => {
+        event.preventDefault();
+        zone.classList.remove("is-hovered");
+        onDrop(zone, event.dataTransfer.getData("text/plain"));
+      });
+    }
+
+    function wrongFeedback(message) {
+      AudioManager.playSfx("wrong");
+      showToast(message, "warning");
+    }
+
+    function loadCertificateFallback(image) {
+      const sources = image.dataset.fallbacks ? image.dataset.fallbacks.split("|") : [];
+      const nextSource = sources.shift();
+      if (nextSource) {
+        image.dataset.fallbacks = sources.join("|");
+        image.src = nextSource;
+        return;
+      }
+      image.style.display = "none";
+      document.getElementById("certificate-fallback").classList.add("is-visible");
+    }
+
+    /* INTRO */
+    function renderIntroStep() {
+      document.querySelectorAll(".tutorial-step").forEach((step, index) => {
+        step.classList.toggle("is-active", index === gameState.introStep);
+      });
+      document.getElementById("intro-actions").dataset.step = String(gameState.introStep);
+      document.querySelectorAll("#intro-dots span").forEach((dot, index) => {
+        dot.classList.toggle("is-active", index === gameState.introStep);
+      });
+    }
+
+    document.getElementById("intro-prev").addEventListener("click", () => {
+      gameState.introStep = Math.max(0, gameState.introStep - 1);
+      renderIntroStep();
+      AudioManager.playSfx("click");
+    });
+
+    document.getElementById("intro-next").addEventListener("click", () => {
+      gameState.introStep = Math.min(2, gameState.introStep + 1);
+      renderIntroStep();
+      AudioManager.playSfx("click");
+    });
+
+    document.getElementById("intro-skip").addEventListener("click", () => {
+      gameState.introStep = 2;
+      renderIntroStep();
+      AudioManager.playSfx("click");
+    });
+
+    document.getElementById("start-button").addEventListener("click", () => {
+      AudioManager.init();
+      AudioManager.playSfx("unlock");
+      switchStage("stage1");
+    });
+
+    bgmButton.addEventListener("click", () => {
+      AudioManager.toggleBgm();
+      AudioManager.playSfx("click");
+    });
+
+    /* STAGE 1 */
+    function enterStage1() {
+      document.getElementById("stage1").classList.remove("is-restored");
+      document.getElementById("water-overlay").classList.remove("is-draining");
+    }
+
+    setupDraggable(".stage1-item");
+    document.querySelectorAll(".stage1-zone").forEach((zone) => setupDropZone(zone, (target, value) => {
+      if (target.dataset.filled === "true") return;
+      if (target.dataset.accept !== value) {
+        target.classList.add("is-wrong");
+        scheduleStageTimeout(() => target.classList.remove("is-wrong"), 300);
+        wrongFeedback("힌트를 다시 읽어 보세요. 물이 깎고, 옮기고, 쌓는 과정을 생각해요.");
+        return;
+      }
+      const label = { erosion: "침식", transport: "운반", deposit: "퇴적" }[value];
+      const feedback = {
+        erosion: "맞아요! 침식은 흐르는 물이 흙이나 바위를 깎는 작용입니다.",
+        transport: "맞아요! 운반은 깎인 흙과 돌이 물에 의해 이동하는 작용입니다.",
+        deposit: "맞아요! 퇴적은 운반된 흙과 돌이 쌓이는 작용입니다."
+      }[value];
+      target.textContent = `${label} 확인!`;
+      target.dataset.filled = "true";
+      target.classList.add("is-correct");
+      gameState.stage1Solved[value] = true;
+      AudioManager.playSfx("correct");
+      showToast(feedback, "success");
+      if (Object.values(gameState.stage1Solved).every(Boolean)) completeStage1();
+    }));
+
+    function completeStage1() {
+      gameState.hasAccessCard = true;
+      document.getElementById("stage1").classList.add("is-restored");
+      document.getElementById("water-overlay").classList.add("is-draining");
+      AudioManager.playSfx("drain");
+      AudioManager.playSfx("powerRestore");
+      showToast("배수 시스템 복구 완료! 출입증을 획득했습니다.", "success", 1500);
+      scheduleStageTimeout(() => switchStage("stage2"), 1500);
+    }
+
+    /* STAGE 2 */
+    setupDraggable("#access-card-item");
+    setupDropZone(document.getElementById("card-reader"), (zone, value) => {
+      if (value !== "access-card") {
+        wrongFeedback("출입증을 카드 리더기에 드래그해야 합니다.");
+        return;
+      }
+      zone.textContent = "출입증 인증 완료!";
+      zone.dataset.filled = "true";
+      zone.classList.add("is-correct");
+      document.getElementById("stage2").classList.add("is-open");
+      AudioManager.playSfx("unlock");
+      AudioManager.playSfx("doorOpen");
+      showToast("출입증 인증 완료! 연구기록실로 이동합니다.", "success", 1200);
+      scheduleStageTimeout(() => switchStage("stage3"), 1300);
+    });
+
+    function enterStage2() {
+      const stage = document.getElementById("stage2");
+      const reader = document.getElementById("card-reader");
+      stage.classList.remove("is-open");
+      reader.textContent = "카드 리더기\n출입증을 여기에 올리세요";
+      reader.classList.remove("is-correct");
+      delete reader.dataset.filled;
+    }
+
+    /* STAGE 3 */
+    const clueTexts = [
+      {
+        title: "단서 1. 강 상류",
+        body: "강 상류는 경사가 급하고 물이 빠르게 흐릅니다. 그래서 침식 작용이 활발하고 큰 바위와 좁은 계곡을 볼 수 있습니다."
+      },
+      {
+        title: "단서 2. 강 하류",
+        body: "강 하류는 경사가 완만하고 물이 느리게 흐릅니다. 그래서 퇴적 작용이 활발하고 모래나 흙이 쌓인 넓고 평평한 땅을 볼 수 있습니다."
+      },
+      {
+        title: "단서 3. 흐르는 물의 세 가지 작용",
+        body: "흐르는 물은 땅을 깎는 침식 작용, 흙과 돌을 옮기는 운반 작용, 옮겨진 물질을 쌓는 퇴적 작용을 합니다."
+      }
+    ];
+
+    function enterStage3() {
+      gameState.foundClues = [];
+      gameState.stage3Unlocked = false;
+      document.getElementById("clue-board").innerHTML = "";
+      document.getElementById("stage3-complete-panel").classList.remove("is-visible");
+      updateClueCollector();
+      closeClueCard();
+      document.querySelectorAll(".clue-hotspot").forEach((spot) => {
+        spot.disabled = false;
+        spot.classList.remove("is-completed");
+      });
+    }
+
+    function updateClueCollector() {
+      const count = gameState.foundClues.length;
+      const collector = document.getElementById("clue-collector");
+      collector.textContent = count === 3 ? "단서 3 / 3 · 분석 완료" : `단서 ${count} / 3`;
+      collector.classList.toggle("is-complete", count === 3);
+      hudProgress.textContent = `단서 ${count} / 3`;
+    }
+
+    function openClueCard(index, event) {
+      const modal = document.getElementById("clue-card-modal");
+      const popup = modal.querySelector(".clue-card-popup");
+      document.getElementById("clue-card-title").textContent = clueTexts[index].title;
+      document.getElementById("clue-card-body").textContent = clueTexts[index].body;
+      popup.style.setProperty("--clue-origin-x", `${event.clientX}px`);
+      popup.style.setProperty("--clue-origin-y", `${event.clientY}px`);
+      modal.dataset.clueIndex = String(index);
+      modal.classList.remove("is-flying");
+      modal.classList.add("is-open");
+      modal.setAttribute("aria-hidden", "false");
+      AudioManager.playSfx("pickup");
+    }
+
+    function closeClueCard() {
+      const modal = document.getElementById("clue-card-modal");
+      modal.classList.remove("is-open", "is-flying");
+      modal.setAttribute("aria-hidden", "true");
+      delete modal.dataset.clueIndex;
+    }
+
+    function confirmClueCard() {
+      const modal = document.getElementById("clue-card-modal");
+      const index = Number(modal.dataset.clueIndex);
+      if (!Number.isInteger(index)) return;
+      if (gameState.foundClues.includes(index)) {
+        closeClueCard();
+        return;
+      }
+      gameState.foundClues.push(index);
+      const spot = document.querySelector(`.clue-hotspot[data-clue="${index}"]`);
+      if (spot) {
+        spot.disabled = true;
+        spot.classList.add("is-completed");
+      }
+      const summary = document.createElement("div");
+      summary.className = "clue-summary-card";
+      summary.textContent = clueTexts[index].title;
+      document.getElementById("clue-board").append(summary);
+      AudioManager.playSfx("correct");
+      modal.classList.add("is-flying");
+      updateClueCollector();
+      scheduleStageTimeout(() => {
+        closeClueCard();
+        if (gameState.foundClues.length === 3 && !gameState.stage3Unlocked) {
+          gameState.stage3Unlocked = true;
+          AudioManager.playSfx("unlock");
+          document.getElementById("stage3-complete-panel").classList.add("is-visible");
+        }
+      }, 520);
+    }
+
+    document.querySelectorAll(".clue-hotspot").forEach((spot) => {
+      spot.addEventListener("click", (event) => {
+        const index = Number(spot.dataset.clue);
+        if (gameState.foundClues.includes(index)) return;
+        AudioManager.playSfx("click");
+        spot.classList.add("is-completed");
+        openClueCard(index, event);
+      });
+    });
+    document.getElementById("clue-confirm-button").addEventListener("click", confirmClueCard);
+    document.getElementById("to-stage4-button").addEventListener("click", () => switchStage("stage4"));
+
+    /* STAGE 4 */
+    const riverQuestionBank = [
+      { q: "물이 빠르고 경사가 급한 곳은 어디일까요?", a: "상류", f: "상류는 경사가 급하고 물이 빠르게 흐릅니다." },
+      { q: "침식 작용이 활발하고 큰 바위와 좁은 계곡을 볼 수 있는 곳은?", a: "상류", f: "상류는 침식 작용이 활발해 큰 바위와 좁은 계곡이 많습니다." },
+      { q: "강물이 구불구불 흐르는 모습이 주로 나타나는 곳은?", a: "중류", f: "중류에서는 강이 구불구불 흐르는 모습을 볼 수 있습니다." },
+      { q: "경사가 완만하고 물이 느리게 흐르는 곳은?", a: "하류", f: "하류는 경사가 완만하고 물이 느리게 흐릅니다." },
+      { q: "퇴적 작용이 활발한 곳은 어디일까요?", a: "하류", f: "하류는 물이 느려져 모래와 흙이 잘 쌓입니다." },
+      { q: "모래와 흙이 쌓인 넓고 평평한 땅을 볼 수 있는 곳은?", a: "하류", f: "넓고 평평한 모래·흙 지형은 하류에서 잘 나타납니다." }
+    ];
+
+    function enterStage4() {
+      gameState.riverQuestions = pickRandom(riverQuestionBank, 3);
+      gameState.riverIndex = 0;
+      renderRiverQuestion();
+    }
+
+    function renderRiverQuestion() {
+      const question = gameState.riverQuestions[gameState.riverIndex];
+      document.getElementById("river-question").textContent = question.q;
+      document.getElementById("river-progress").textContent = `강 지형 분석 ${gameState.riverIndex + 1} / 3`;
+      hudProgress.textContent = `${gameState.riverIndex + 1} / 3`;
+      renderChoices("river-choices", shuffle(["상류", "중류", "하류"]), (choice, button) => {
+        if (choice !== question.a) {
+          button.classList.add("is-wrong");
+          wrongFeedback("단서를 다시 떠올려 보세요. 물의 빠르기와 경사가 중요합니다.");
+          scheduleStageTimeout(() => button.classList.remove("is-wrong"), 300);
+          return;
+        }
+        AudioManager.playSfx("correct");
+        showToast(question.f, "success");
+        gameState.riverIndex += 1;
+        if (gameState.riverIndex >= 3) {
+          scheduleStageTimeout(() => switchStage("stage5"), 1100);
+        } else {
+          scheduleStageTimeout(renderRiverQuestion, 900);
+        }
+      });
+    }
+
+    /* STAGE 5 */
+    const rockQuestionBank = [
+      { q: "밝은 색이고 알갱이가 큰 암석은?", a: "화강암", f: "화강암은 색이 밝고 알갱이가 큽니다. 땅속 깊은 곳에서 천천히 식어 만들어집니다." },
+      { q: "어두운 색이고 구멍이 보이기도 하는 암석은?", a: "현무암", f: "현무암은 색이 어둡고 알갱이가 작습니다. 구멍이 보이기도 합니다." }
+    ];
+
+    function enterStage5() {
+      gameState.rockQuestions = pickRandom(rockQuestionBank, 2);
+      gameState.rockIndex = 0;
+      document.getElementById("rock-info").classList.remove("is-visible");
+      renderRockQuestion();
+    }
+
+    function renderRockQuestion() {
+      const question = gameState.rockQuestions[gameState.rockIndex];
+      document.getElementById("rock-question").textContent = question.q;
+      document.getElementById("rock-progress").textContent = `암석 분석 ${gameState.rockIndex + 1} / 2`;
+      hudProgress.textContent = `${gameState.rockIndex + 1} / 2`;
+      renderRockChoices(question);
+    }
+
+    function renderRockChoices(question) {
+      const container = document.getElementById("rock-choices");
+      container.innerHTML = "";
+      const rocks = shuffle([
+        { name: "화강암", image: "./assets/images/item_granite.jpeg", info: "화강암은 색이 밝고 알갱이가 큽니다. 땅속 깊은 곳에서 천천히 식어 만들어집니다." },
+        { name: "현무암", image: "./assets/images/item_basalt.jpeg", info: "현무암은 색이 어둡고 알갱이가 작습니다. 구멍이 보이기도 합니다." }
+      ]);
+      rocks.forEach((rock) => {
+        const button = document.createElement("button");
+        button.className = "choice-card";
+        button.type = "button";
+        button.innerHTML = `<img src="${rock.image}" alt="${rock.name}" onerror="this.style.display='none'" /><span>${rock.name}</span>`;
+        button.addEventListener("mouseenter", () => showRockInfo(rock.info));
+        button.addEventListener("click", () => {
+          showRockInfo(rock.info);
+          if (rock.name !== question.a) {
+            wrongFeedback("분석 설명을 다시 읽고 암석의 색과 알갱이를 비교해 보세요.");
+            return;
+          }
+          AudioManager.playSfx("correct");
+          showToast(question.f, "success");
+          gameState.rockIndex += 1;
+          if (gameState.rockIndex >= 2) {
+            scheduleStageTimeout(() => switchStage("stage6"), 1100);
+          } else {
+            scheduleStageTimeout(renderRockQuestion, 900);
+          }
+        });
+        container.append(button);
+      });
+    }
+
+    function showRockInfo(text) {
+      const panel = document.getElementById("rock-info");
+      panel.textContent = text;
+      panel.classList.add("is-visible");
+    }
+
+    /* STAGE 6 */
+    const volcanoQuestionBank = [
+      { q: "지표면을 흐르다 굳어 암석이 되는 액체 물질", a: "용암", f: "용암은 지표로 나온 마그마가 흐르다 굳은 물질입니다." },
+      { q: "화산 활동으로 나오는 기체 물질", a: "화산 가스", f: "화산 가스는 화산 활동으로 나오는 기체 물질입니다." },
+      { q: "매우 작은 고체 알갱이", a: "화산재", f: "화산재는 화산에서 나오는 매우 작은 고체 알갱이입니다." },
+      { q: "크기가 다양한 고체 조각", a: "화산 암석 조각", f: "화산 암석 조각은 분출될 때 나오는 다양한 크기의 고체 조각입니다." }
+    ];
+
+    function enterStage6() {
+      gameState.volcanoQuestions = shuffle(volcanoQuestionBank);
+      gameState.volcanoIndex = 0;
+      gameState.volcanoCorrectCount = 0;
+      updateVolcanoProgress();
+      showEmergency("화산 활동 수치 상승! 제어 장치를 안정화하세요.", { level: 1, siren: false, rumble: false });
+      AudioManager.playSfx("alarm");
+      renderVolcanoQuestion();
+    }
+
+    function updateVolcanoProgress() {
+      const total = gameState.volcanoQuestions.length || volcanoQuestionBank.length;
+      const correct = gameState.volcanoCorrectCount || 0;
+      document.getElementById("volcano-progress").textContent = `화산 분석 ${correct} / ${total}`;
+      hudProgress.textContent = `${correct} / ${total}`;
+      const fill = document.getElementById("pressure-fill");
+      if (fill) {
+        const remainingRatio = Math.max(0, 1 - correct / total);
+        fill.style.width = `${remainingRatio * 100}%`;
+      }
+    }
+
+    function renderVolcanoQuestion() {
+      const question = gameState.volcanoQuestions[gameState.volcanoIndex];
+      document.getElementById("volcano-question").textContent = question.q;
+      updateVolcanoProgress();
+      renderChoices("volcano-choices", shuffle(["용암", "화산 가스", "화산재", "화산 암석 조각", "마그마", "분화구"]), (choice) => {
+        if (choice !== question.a) {
+          wrongFeedback("설명과 가장 잘 맞는 분출물을 다시 골라 보세요.");
+          return;
+        }
+        AudioManager.playSfx("correct");
+        showToast(question.f, "success");
+        gameState.volcanoCorrectCount += 1;
+        updateVolcanoProgress();
+        if (gameState.volcanoCorrectCount >= gameState.volcanoQuestions.length) {
+          AudioManager.playSfx("success");
+          showEmergency("화산재 경보! 실내 대피 행동을 준비하세요.", { level: 2, siren: true, sirenType: "ash" });
+          showToast("화산 활동 경보가 발생했습니다. 화산재 대피실로 이동하세요.", "warning", 1300);
+          scheduleStageTimeout(() => switchStage("stage7"), 1400);
+        } else {
+          gameState.volcanoIndex += 1;
+          scheduleStageTimeout(renderVolcanoQuestion, 900);
+        }
+      });
+    }
+
+    function renderChoices(containerId, choices, handler) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = "";
+      choices.forEach((choice) => {
+        const button = document.createElement("button");
+        button.className = "choice-card";
+        button.type = "button";
+        button.textContent = choice;
+        button.addEventListener("click", () => handler(choice, button));
+        container.append(button);
+      });
+    }
+
+    /* STAGE 7 */
+    function enterStage7() {
+      gameState.ashSolved = { mask: false, towel: false, bag: false };
+      hudProgress.textContent = "화산재 대피 준비 0 / 3";
+      document.getElementById("stage7").classList.remove("danger-flash");
+      document.querySelectorAll(".ash-zone").forEach((zone) => {
+        zone.classList.remove("is-correct");
+        delete zone.dataset.filled;
+      });
+      document.querySelectorAll(".wrong-action").forEach((button) => button.classList.remove("is-wrong"));
+      AudioManager.startEmergencySiren("ash");
+      showToast("화산재 경보! 안전 물품을 준비하세요.", "danger", 1800);
+      AudioManager.playSfx("ashAlert");
+    }
+
+    const ashSafetyFeedback = {
+      mask: "좋아요! 화산재를 들이마시지 않도록 코와 입을 보호해야 합니다.",
+      towel: "좋아요! 화산재가 들어오지 않도록 문틈이나 환기구를 막아야 합니다.",
+      bag: "좋아요! 필요한 비상 물품을 준비하고 안내에 따라 침착하게 이동해야 합니다."
+    };
+
+    const ashDangerFeedback = {
+      window: "위험해요! 화산재가 실내로 들어올 수 있으므로 창문을 닫아야 합니다.",
+      outside: "위험해요! 화산재가 날릴 때는 함부로 밖으로 나가지 말고 안내에 따라 행동해야 합니다.",
+      vent: "위험해요! 화산재가 실내로 들어올 수 있으므로 환기구를 끄고 막아야 합니다."
+    };
+
+    setupDraggable(".ash-item");
+    document.querySelectorAll(".ash-zone").forEach((zone) => setupDropZone(zone, (target, value) => {
+      if (target.dataset.accept !== value) {
+        wrongFeedback("화산재 상황에서는 호흡기를 보호하고, 틈을 막고, 비상 물품을 준비해야 합니다.");
+        return;
+      }
+      target.dataset.filled = "true";
+      target.classList.add("is-correct");
+      gameState.ashSolved[value] = true;
+      AudioManager.playSfx(value === "bag" ? "pickup" : "correct");
+      AudioManager.playSfx("correct");
+      showToast(ashSafetyFeedback[value], "success", 2600);
+      const count = Object.values(gameState.ashSolved).filter(Boolean).length;
+      hudProgress.textContent = `화산재 대피 준비 ${count} / 3`;
+      if (count === 3) {
+        hideEmergency();
+        AudioManager.playSfx("success");
+        showToast("화산재 대피 준비 완료!", "success", 1500);
+        scheduleStageTimeout(() => switchStage("stage8"), 1500);
+      }
+    }));
+
+    document.querySelectorAll(".wrong-action").forEach((button) => {
+      button.addEventListener("click", () => {
+        const stage = document.getElementById("stage7");
+        const message = ashDangerFeedback[button.dataset.danger] || "위험해요! 화산재가 들어오지 않도록 실내에서 보호 행동을 해야 합니다.";
+        AudioManager.playSfx("wrong");
+        button.classList.remove("is-wrong");
+        stage.classList.remove("danger-flash");
+        void button.offsetWidth;
+        button.classList.add("is-wrong");
+        stage.classList.add("danger-flash");
+        showToast(message, "danger", 3600);
+        scheduleStageTimeout(() => {
+          button.classList.remove("is-wrong");
+          stage.classList.remove("danger-flash");
+        }, 420);
+      });
+    });
+
+    /* STAGE 8 */
+    function setStage8MainMessage(message, mode = "warning") {
+      const main = document.getElementById("quake-warning");
+      main.textContent = message;
+      main.classList.add("is-visible");
+      main.classList.toggle("is-safe", mode === "safe");
+    }
+
+    function setStage8SubMessage(message = "") {
+      const sub = document.getElementById("stage8-sub-message");
+      sub.textContent = message;
+      sub.classList.toggle("is-visible", Boolean(message));
+    }
+
+    function enterStage8() {
+      clearStageTimers();
+      const stage = document.getElementById("stage8");
+      stage.classList.remove("is-quake", "is-soft-shaking", "is-strong-shaking");
+      document.getElementById("quake-warning").classList.remove("is-visible", "is-safe");
+      setStage8SubMessage("");
+      document.getElementById("desk-dropzone").classList.remove("is-correct");
+      document.getElementById("desk-dropzone").textContent = "방석으로 머리를 감싸고 이곳으로 숨으세요!";
+      document.getElementById("exit-door").classList.remove("is-active");
+      document.getElementById("fail-modal").classList.remove("is-open");
+      document.getElementById("cushion-item").disabled = false;
+      gameState.stage8ReadyToExit = false;
+      gameState.stage8TimeLeft = 15;
+      renderStage8Timer();
+      showToast("처음 2초 동안 주변을 살펴보세요. 곧 지진 대피 훈련이 시작됩니다.", "info", 1800);
+      scheduleStageTimeout(() => {
+        if (gameState.currentStage !== "stage8") return;
+        stage.classList.add("is-quake");
+        setStage8MainMessage("지진 발생! 흔들림이 멈출 때까지 머리를 보호하고 책상 아래로 대피하세요!");
+        AudioManager.playSfx("alarm");
+        AudioManager.playSfx("rumble");
+        showEmergency("지진 발생! 책상 아래로 대피하세요!", { level: 3, siren: true, rumble: true, shake: true, strong: true });
+        emergencyMessage.classList.add("is-stage8-hidden");
+        startStage8Timer();
+      }, 2000);
+    }
+
+    function renderStage8Timer() {
+      const value = `00:${String(gameState.stage8TimeLeft).padStart(2, "0")}`;
+      document.getElementById("stage8-timer").textContent = value;
+      hudProgress.textContent = value;
+    }
+
+    function startStage8Timer() {
+      clearStage8Timer();
+      gameState.stage8Timer = setInterval(() => {
+        gameState.stage8TimeLeft -= 1;
+        renderStage8Timer();
+        if (gameState.stage8TimeLeft <= 0) {
+          clearStage8Timer();
+          document.getElementById("stage8").classList.remove("is-quake");
+          setStage8SubMessage("");
+          hideEmergency();
+          document.getElementById("fail-modal").classList.add("is-open");
+          AudioManager.playSfx("alarm");
+        }
+      }, 1000);
+    }
+
+    function clearStage8Timer() {
+      clearInterval(gameState.stage8Timer);
+      gameState.stage8Timer = null;
+    }
+
+    setupDraggable("#cushion-item");
+    setupDropZone(document.getElementById("desk-dropzone"), (zone, value) => {
+      if (value !== "cushion") return;
+      clearStage8Timer();
+      const stage = document.getElementById("stage8");
+      stage.classList.remove("is-quake", "is-strong-shaking");
+      stage.classList.add("is-soft-shaking");
+      zone.classList.add("is-correct");
+      zone.textContent = "대피 완료";
+      document.getElementById("cushion-item").disabled = true;
+      AudioManager.playSfx("correct");
+      setStage8SubMessage("머리를 보호하고 책상 아래 대피 완료!");
+      scheduleStageTimeout(() => {
+        if (gameState.currentStage !== "stage8") return;
+        stage.classList.remove("is-soft-shaking");
+        hideEmergency();
+        gameState.stage8ReadyToExit = true;
+        setStage8MainMessage("흔들림이 멈췄습니다. 이제 비상구를 확인하세요.", "safe");
+        document.getElementById("exit-door").classList.add("is-active");
+        AudioManager.playSfx("unlock");
+      }, 2000);
+    });
+
+    document.getElementById("retry-stage8-button").addEventListener("click", () => enterStage8());
+
+    document.getElementById("exit-door").addEventListener("click", () => {
+      if (!gameState.stage8ReadyToExit) {
+        AudioManager.playSfx("wrong");
+        showToast("아직 흔들리고 있어요! 먼저 머리를 보호하고 책상 아래로 대피하세요.", "warning", 2600);
+        return;
+      }
+      hideEmergency();
+      AudioManager.playSfx("doorOpen");
+      switchStage("stage9");
+    });
+
+    /* STAGE 9 */
+    function enterStage9() {
+      renderEvacuationChoices();
+    }
+
+    function renderEvacuationChoices() {
+      const choices = shuffle([
+        { label: "비상계단 이용하기", answer: true, image: "./assets/images/item_emergency_stairs.png" },
+        { label: "엘리베이터 타기", answer: false, image: "./assets/images/item_no_elevator.png" },
+        { label: "다시 방 안에서 뛰어다니기", answer: false, image: "" }
+      ]);
+      const container = document.getElementById("evacuation-choices");
+      container.innerHTML = "";
+      choices.forEach((choice) => {
+        const button = document.createElement("button");
+        button.className = "choice-card";
+        button.type = "button";
+        button.innerHTML = choice.image ? `<img src="${choice.image}" alt="" onerror="this.style.display='none'" /><span>${choice.label}</span>` : `<span>${choice.label}</span>`;
+        button.addEventListener("click", () => {
+          if (!choice.answer) {
+            wrongFeedback("위험해요. 지진 후에는 엘리베이터를 이용하지 않고 안전한 탈출로를 따라 이동해야 합니다.");
+            return;
+          }
+          AudioManager.playSfx("correct");
+          AudioManager.playSfx("doorOpen");
+          showToast("맞아요! 흔들림이 멈춘 뒤에는 안내에 따라 침착하게 이동하고, 엘리베이터 대신 계단을 이용합니다.", "success", 2200);
+          scheduleStageTimeout(() => switchStage("stage10"), 2300);
+        });
+        container.append(button);
+      });
+    }
+
+    function enterStage10() {
+      hideEmergency();
+      clearStage8Timer();
+      AudioManager.stopEmergencySiren();
+      AudioManager.stopRumble();
+      AudioManager.stopAndResetBgm();
+      document.getElementById("stage10").classList.add("is-celebrating");
+      AudioManager.playSfx("finalSuccess");
+      showToast("지질 연구소 탈출 성공!", "success", 3000);
+    }
+
+    document.getElementById("restart-button").addEventListener("click", () => {
+      hideEmergency();
+      clearStage8Timer();
+      AudioManager.stopEmergencySiren();
+      AudioManager.stopRumble();
+      AudioManager.stopAndResetBgm();
+      window.location.reload();
+    });
+
+    hudStage.textContent = stageMeta.intro.label;
+    hudTitle.textContent = stageMeta.intro.title;
+    hudProgress.textContent = "";
+    renderIntroStep();
+  </script>
+</body>
+</html>
