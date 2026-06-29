@@ -2952,15 +2952,13 @@
         button.className = "choice-card";
         button.type = "button";
         button.innerHTML = `<img src="${rock.image}" alt="${rock.name}" onerror="this.style.display='none'" /><span>${rock.name}</span>`;
-        button.addEventListener("mouseenter", () => showRockInfo(rock.info));
         button.addEventListener("click", () => {
-          showRockInfo(rock.info);
+          document.getElementById("rock-info").classList.remove("is-visible");
           if (rock.name !== question.a) {
             wrongFeedback("분석 설명을 다시 읽고 암석의 색과 알갱이를 비교해 보세요.");
             return;
           }
           AudioManager.playSfx("correct");
-          document.getElementById("rock-info").classList.remove("is-visible");
           const feedbackMs = showToast(question.f, "success", 950);
           gameState.rockIndex += 1;
           if (gameState.rockIndex >= 2) {
