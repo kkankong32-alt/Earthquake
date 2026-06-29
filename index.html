@@ -996,25 +996,25 @@
     .rock-info.is-visible { display: block; }
 
     #stage5 .quiz-card {
-      top: 31%;
-      width: min(86vw, 860px);
+      top: 40%;
+      width: min(82vw, 820px);
       min-height: auto;
-      padding: 26px 30px;
+      padding: 20px 28px 24px;
       border-radius: 20px;
     }
 
     #stage5 .quiz-card h3 {
-      font-size: clamp(2rem, 3.5vw, 3rem);
-      line-height: 1.3;
+      font-size: clamp(1.65rem, 3vw, 2.55rem);
+      line-height: 1.22;
     }
 
     #stage5 .quiz-card p {
-      margin-top: 10px;
-      font-size: clamp(1.2rem, 2vw, 1.6rem);
+      margin-top: 8px;
+      font-size: clamp(1.08rem, 1.8vw, 1.38rem);
     }
 
     #rock-choices.choice-grid {
-      top: 60%;
+      top: 68%;
       width: min(90vw, 760px);
       grid-template-columns: repeat(2, minmax(250px, 330px));
       justify-content: center;
@@ -1024,18 +1024,18 @@
 
     #rock-choices .choice-card {
       width: clamp(250px, 22vw, 330px);
-      min-height: 250px;
+      min-height: 230px;
       padding: 18px 18px 16px;
       border-radius: 18px;
-      grid-template-rows: minmax(150px, 1fr) auto;
+      grid-template-rows: minmax(132px, 1fr) auto;
       justify-items: center;
       align-items: center;
     }
 
     #rock-choices .choice-card img {
       width: 90%;
-      height: 150px;
-      max-height: 170px;
+      height: 136px;
+      max-height: 150px;
       object-fit: contain;
       margin: 0 auto;
     }
@@ -1139,41 +1139,48 @@
     }
 
     #stage7 .stage-card {
-      top: 88px;
-      width: min(82vw, 760px);
-      padding: 18px 26px;
+      top: 82px;
+      width: min(82vw, 720px);
+      padding: 14px 24px;
       z-index: 8;
     }
 
     #stage7 .stage-card h2 {
-      font-size: clamp(2rem, 3.6vw, 3rem);
+      font-size: clamp(1.75rem, 3.2vw, 2.6rem);
       line-height: 1.15;
     }
 
     #stage7 .stage-card p {
-      font-size: clamp(1.18rem, 2vw, 1.55rem);
-      line-height: 1.45;
+      font-size: clamp(1.02rem, 1.75vw, 1.32rem);
+      line-height: 1.36;
     }
 
     #stage7 .inventory-bar {
-      width: min(92vw, 760px);
-      min-height: 190px;
-      padding: 14px 18px;
+      width: min(86vw, 680px);
+      min-height: 150px;
+      padding: 10px 14px;
+    }
+
+    #stage7 .ash-item {
+      width: 160px;
+      min-width: 160px;
+      min-height: 154px;
+      grid-template-rows: minmax(106px, 1fr) auto;
     }
 
     #stage7 .ash-item img {
       width: 96%;
-      height: clamp(136px, 10.8vw, 176px);
-      max-height: 176px;
+      height: 108px;
+      max-height: 108px;
     }
 
-    #mask-zone { top: 38%; left: 22%; }
-    #towel-zone { top: 49%; left: 50%; }
-    #bag-zone { top: 38%; left: 78%; }
+    #mask-zone { top: 43%; left: 22%; }
+    #towel-zone { top: 54%; left: 50%; }
+    #bag-zone { top: 43%; left: 78%; }
 
     .wrong-actions {
       position: absolute;
-      top: 64%;
+      top: 69%;
       left: 50%;
       z-index: 7;
       transform: translateX(-50%);
@@ -1184,15 +1191,15 @@
     }
 
     .wrong-action {
-      min-height: 86px;
-      padding: 14px 16px;
+      min-height: 74px;
+      padding: 10px 14px;
       border: 3px solid rgba(248,113,113,0.95);
       border-radius: 16px;
       color: #fff1f2;
       background: linear-gradient(145deg, rgba(153,27,27,0.90), rgba(69,10,10,0.82));
       box-shadow: 0 16px 34px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.22);
       font-weight: 900;
-      font-size: clamp(18px, 2vw, 24px);
+      font-size: clamp(16px, 1.7vw, 21px);
       text-shadow: 0 2px 0 rgba(0,0,0,0.45);
       cursor: pointer;
       transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
@@ -1345,22 +1352,22 @@
     .stage8-sub-message.is-visible { display: block; }
 
     #stage8 .inventory-bar {
-      width: min(88vw, 320px);
-      min-height: 132px;
-      padding: 10px 12px;
+      width: min(82vw, 260px);
+      min-height: 108px;
+      padding: 8px 10px;
       transition: opacity 220ms ease, visibility 220ms ease, transform 220ms ease;
     }
 
     #stage8 #cushion-item {
-      width: 150px;
-      min-width: 150px;
-      min-height: 132px;
-      grid-template-rows: minmax(88px, 1fr) auto;
+      width: 126px;
+      min-width: 126px;
+      min-height: 108px;
+      grid-template-rows: minmax(72px, 1fr) auto;
     }
 
     #stage8 #cushion-item img {
-      height: 86px;
-      max-height: 86px;
+      height: 72px;
+      max-height: 72px;
     }
 
     #stage8.is-sheltered .inventory-bar {
@@ -1373,10 +1380,10 @@
     #desk-dropzone {
       /* ★★★★★ 여기서 책상 아래 드롭존 위치 수정하세요! ★★★★★ */
       position: absolute;
-      bottom: 18%;
+      bottom: 25%;
       left: 43%;
       width: 18%;
-      height: 18%;
+      height: 16%;
       z-index: 7;
       border: 5px dashed rgba(255,255,255,0.9);
       border-radius: 14px;
@@ -1773,15 +1780,15 @@
       }
 
       .inventory-bar {
-        position: fixed;
-        left: 50vw;
-        bottom: max(8px, env(safe-area-inset-bottom));
+        position: absolute;
+        left: 50%;
+        bottom: max(28px, env(safe-area-inset-bottom));
         max-width: min(96vw, 900px);
         min-height: 116px;
         padding: 8px;
         gap: 8px;
         overflow-x: auto;
-        z-index: 140;
+        z-index: 12;
       }
 
       .item-card,
