@@ -654,7 +654,7 @@
         url("./assets/images/bg_stage1_restored.jpeg");
     }
 
-    #stage1-erosion { top: 32%; left: 24%; }
+    #stage1-erosion { top: 34%; left: 24%; }
     #stage1-transport { top: 48%; left: 50%; }
     #stage1-deposit { top: 58%; left: 74%; }
 
@@ -1180,7 +1180,7 @@
 
     .wrong-actions {
       position: absolute;
-      top: 60%;
+      top: 63%;
       left: 50%;
       z-index: 7;
       transform: translateX(-50%);
@@ -1248,7 +1248,7 @@
 
     @media (max-width: 720px) {
       .wrong-actions {
-        top: 61%;
+        top: 64%;
         grid-template-columns: repeat(3, minmax(0, 1fr));
         width: min(94vw, 520px);
       }
@@ -1380,7 +1380,7 @@
     #desk-dropzone {
       /* ★★★★★ 여기서 책상 아래 드롭존 위치 수정하세요! ★★★★★ */
       position: absolute;
-      bottom: 32%;
+      bottom: 26%;
       left: 43%;
       width: 18%;
       height: 13%;
@@ -1654,7 +1654,7 @@
         height: clamp(106px, 28vw, 142px);
         max-height: 142px;
       }
-      #stage1-erosion { top: 30%; left: 50%; }
+      #stage1-erosion { top: 32%; left: 50%; }
       #stage1-transport { top: 47%; left: 50%; }
       #stage1-deposit { top: 56%; left: 50%; }
       .inventory-bar { max-width: 94vw; overflow-x: auto; }
@@ -1860,7 +1860,7 @@
         font-size: clamp(0.95rem, 2vw, 1.18rem);
       }
 
-      #stage1-erosion { top: 29%; left: 50%; }
+      #stage1-erosion { top: 31%; left: 50%; }
       #stage1-transport { top: 43%; left: 50%; }
       #stage1-deposit { top: 56%; left: 50%; }
 
@@ -1955,7 +1955,7 @@
       #bag-zone { top: 30%; left: 76%; }
 
       .wrong-actions {
-        top: 55%;
+        top: 58%;
         width: min(94vw, 660px);
         grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 8px;
@@ -2932,6 +2932,7 @@
     }
 
     function renderRockQuestion() {
+      document.getElementById("rock-info").classList.remove("is-visible");
       const question = gameState.rockQuestions[gameState.rockIndex];
       document.getElementById("rock-question").textContent = question.q;
       document.getElementById("rock-progress").textContent = `암석 분석 ${gameState.rockIndex + 1} / 2`;
@@ -2959,6 +2960,7 @@
             return;
           }
           AudioManager.playSfx("correct");
+          document.getElementById("rock-info").classList.remove("is-visible");
           const feedbackMs = showToast(question.f, "success", 950);
           gameState.rockIndex += 1;
           if (gameState.rockIndex >= 2) {
