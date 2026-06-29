@@ -953,6 +953,28 @@
       font-weight: 900;
     }
 
+    #stage4 .stage-card {
+      top: 86px;
+    }
+
+    #stage4 .quiz-card {
+      top: 41%;
+      width: min(88vw, 880px);
+      min-height: 210px;
+      padding: 30px 34px 34px;
+    }
+
+    #stage4 .quiz-card h3 {
+      font-size: clamp(1.85rem, 3.4vw, 2.65rem);
+      line-height: 1.32;
+    }
+
+    #river-choices.choice-grid {
+      top: 67%;
+      width: min(88vw, 880px);
+      gap: 18px;
+    }
+
     .rock-info {
       position: absolute;
       left: 50%;
@@ -1653,13 +1675,18 @@
         touch-action: pan-x pan-y;
         -webkit-overflow-scrolling: touch;
         scrollbar-gutter: stable both-edges;
+        scroll-padding-bottom: 180px;
+      }
+
+      body {
+        padding-bottom: max(180px, env(safe-area-inset-bottom));
       }
 
       .game-root {
         width: max(100vw, 1024px);
         min-width: 1024px;
         height: auto;
-        min-height: max(100dvh, 900px);
+        min-height: max(100dvh, 1080px);
         overflow: visible;
         touch-action: pan-x pan-y;
       }
@@ -1675,7 +1702,7 @@
         width: max(100vw, 1024px);
         min-width: 1024px;
         height: auto;
-        min-height: max(100dvh, 900px);
+        min-height: max(100dvh, 1080px);
         overflow: visible;
       }
 
@@ -1797,7 +1824,7 @@
       }
 
       .quiz-card {
-        top: 42%;
+        top: 36%;
         width: min(92vw, 760px);
         min-height: 118px;
         padding: 16px 18px;
@@ -1828,10 +1855,31 @@
 
       #stage1-erosion { top: 29%; left: 50%; }
       #stage1-transport { top: 43%; left: 50%; }
-      #stage1-deposit { top: 57%; left: 50%; }
+      #stage1-deposit { top: 56%; left: 50%; }
+
+      #stage4 .stage-card {
+        top: 66px;
+      }
+
+      #stage4 .quiz-card {
+        top: 31%;
+        width: min(92vw, 760px);
+        min-height: 154px;
+        padding: 18px 20px 22px;
+      }
+
+      #stage4 .quiz-card h3 {
+        font-size: clamp(1.25rem, 2.8vw, 1.9rem);
+        line-height: 1.28;
+      }
+
+      #river-choices.choice-grid {
+        top: 54%;
+        width: min(94vw, 780px);
+      }
 
       #stage5 .quiz-card {
-        top: 27%;
+        top: 28%;
         width: min(92vw, 720px);
         padding: 16px 18px;
       }
@@ -1841,7 +1889,7 @@
       }
 
       #rock-choices.choice-grid {
-        top: 58%;
+        top: 56%;
         width: min(94vw, 700px);
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 14px;
@@ -1860,7 +1908,7 @@
       }
 
       .stage6-layout {
-        top: 54%;
+        top: 50%;
         width: min(94vw, 920px);
         gap: 12px;
       }
@@ -1975,14 +2023,14 @@
       }
 
       .stage3-complete-panel {
-        bottom: clamp(118px, 17vh, 180px);
+        bottom: clamp(156px, 18vh, 210px);
       }
     }
 
     @media (max-height: 680px) {
       .game-root,
       .screen.is-active {
-        min-height: 900px;
+        min-height: 1100px;
       }
 
       .hud {
