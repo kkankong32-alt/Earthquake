@@ -1302,7 +1302,7 @@
     .stage8-sub-message {
       position: absolute;
       left: 50%;
-      bottom: clamp(180px, 20vh, 250px);
+      top: clamp(255px, 34vh, 350px);
       z-index: 34;
       width: min(72vw, 620px);
       padding: 14px 24px;
@@ -1321,6 +1321,32 @@
     }
 
     .stage8-sub-message.is-visible { display: block; }
+
+    #stage8 .inventory-bar {
+      width: min(88vw, 320px);
+      min-height: 132px;
+      padding: 10px 12px;
+      transition: opacity 220ms ease, visibility 220ms ease, transform 220ms ease;
+    }
+
+    #stage8 #cushion-item {
+      width: 150px;
+      min-width: 150px;
+      min-height: 132px;
+      grid-template-rows: minmax(88px, 1fr) auto;
+    }
+
+    #stage8 #cushion-item img {
+      height: 86px;
+      max-height: 86px;
+    }
+
+    #stage8.is-sheltered .inventory-bar {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transform: translateX(-50%) translateY(28px);
+    }
 
     #desk-dropzone {
       /* ★★★★★ 여기서 책상 아래 드롭존 위치 수정하세요! ★★★★★ */
@@ -1919,10 +1945,27 @@
       }
 
       .stage8-sub-message {
-        bottom: clamp(132px, 18vh, 190px);
+        top: clamp(210px, 30vh, 280px);
+        bottom: auto;
         width: min(82vw, 560px);
         padding: 11px 18px;
         font-size: clamp(0.98rem, 2vw, 1.32rem);
+      }
+
+      #stage8 .inventory-bar {
+        width: min(72vw, 260px);
+        min-height: 108px;
+      }
+
+      #stage8 #cushion-item {
+        width: 126px;
+        min-width: 126px;
+        min-height: 108px;
+      }
+
+      #stage8 #cushion-item img {
+        height: 72px;
+        max-height: 72px;
       }
 
       #desk-dropzone {
@@ -3017,7 +3060,7 @@
     function enterStage8() {
       clearStageTimers();
       const stage = document.getElementById("stage8");
-      stage.classList.remove("is-quake", "is-soft-shaking", "is-strong-shaking");
+      stage.classList.remove("is-quake", "is-soft-shaking", "is-strong-shaking", "is-sheltered");
       document.getElementById("quake-warning").classList.remove("is-visible", "is-safe");
       setStage8SubMessage("");
       document.getElementById("desk-dropzone").classList.remove("is-correct");
@@ -3075,11 +3118,12 @@
       const stage = document.getElementById("stage8");
       stage.classList.remove("is-quake", "is-strong-shaking");
       stage.classList.add("is-soft-shaking");
+      stage.classList.add("is-sheltered");
       zone.classList.add("is-correct");
       zone.textContent = "대피 완료";
       document.getElementById("cushion-item").disabled = true;
       AudioManager.playSfx("correct");
-      setStage8SubMessage("머리를 보호하고 책상 아래 대피 완료!");
+      setStage8SubMessage("");
       scheduleStageTimeout(() => {
         if (gameState.currentStage !== "stage8") return;
         stage.classList.remove("is-soft-shaking");
