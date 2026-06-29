@@ -1618,35 +1618,43 @@
     @media (max-height: 820px), (max-width: 1100px) and (max-height: 940px) {
       html,
       body {
+        width: auto;
         height: auto;
         min-height: 100dvh;
-        overflow-x: hidden;
+        overflow-x: auto;
         overflow-y: auto;
         overscroll-behavior: contain;
+        touch-action: pan-x pan-y;
         -webkit-overflow-scrolling: touch;
+        scrollbar-gutter: stable both-edges;
       }
 
       .game-root {
+        width: max(100vw, 1024px);
+        min-width: 1024px;
         height: auto;
-        min-height: 100dvh;
+        min-height: max(100dvh, 900px);
         overflow: visible;
+        touch-action: pan-x pan-y;
       }
 
       .screen {
         overflow: visible;
+        touch-action: pan-x pan-y;
       }
 
       .screen.is-active {
         position: relative;
         inset: auto;
-        width: 100vw;
+        width: max(100vw, 1024px);
+        min-width: 1024px;
         height: auto;
-        min-height: max(100dvh, 860px);
+        min-height: max(100dvh, 900px);
         overflow: visible;
       }
 
       .screen::before {
-        position: fixed;
+        position: absolute;
       }
 
       .hud {
@@ -1673,6 +1681,7 @@
 
       .hud-progress,
       .hud-timer {
+        display: block;
         min-width: 56px;
         font-size: 0.86rem;
       }
@@ -1711,12 +1720,15 @@
       }
 
       .inventory-bar {
+        position: fixed;
+        left: 50vw;
         bottom: max(8px, env(safe-area-inset-bottom));
-        max-width: 96vw;
+        max-width: min(96vw, 900px);
         min-height: 116px;
         padding: 8px;
         gap: 8px;
         overflow-x: auto;
+        z-index: 140;
       }
 
       .item-card,
@@ -1925,8 +1937,9 @@
     }
 
     @media (max-height: 680px) {
+      .game-root,
       .screen.is-active {
-        min-height: 780px;
+        min-height: 900px;
       }
 
       .hud {
@@ -2458,6 +2471,17 @@
       });
     }
 
+    function centerResponsiveViewport() {
+      const root = document.documentElement;
+      const maxScrollLeft = Math.max(0, root.scrollWidth - window.innerWidth);
+      if (!maxScrollLeft) return;
+      window.scrollTo({
+        left: Math.round(maxScrollLeft / 2),
+        top: 0,
+        behavior: "auto"
+      });
+    }
+
     function switchStage(stageId) {
       clearAllTransientUI();
       screens.forEach((screen) => screen.classList.remove("is-active"));
@@ -2481,6 +2505,7 @@
         stage10: enterStage10
       }[stageId];
       if (enter) enter();
+      requestAnimationFrame(centerResponsiveViewport);
     }
 
     function shuffle(array) {
@@ -2853,8 +2878,8 @@
       gameState.volcanoIndex = 0;
       gameState.volcanoCorrectCount = 0;
       updateVolcanoProgress();
-      showEmergency("화산 활동 수치 상승! 제어 장치를 안정화하세요.", { level: 1, siren: false, rumble: false });
       AudioManager.playSfx("alarm");
+      showToast("화산 활동 수치 상승! 제어 장치를 안정화하세요.", "warning", 1500);
       renderVolcanoQuestion();
     }
 
@@ -2885,7 +2910,7 @@
         updateVolcanoProgress();
         if (gameState.volcanoCorrectCount >= gameState.volcanoQuestions.length) {
           AudioManager.playSfx("success");
-          showEmergency("화산재 경보! 실내 대피 행동을 준비하세요.", { level: 2, siren: true, sirenType: "ash" });
+          AudioManager.startEmergencySiren("ash");
           showToast("화산 활동 경보가 발생했습니다. 화산재 대피실로 이동하세요.", "warning", 1300);
           scheduleStageTimeout(() => switchStage("stage7"), 1400);
         } else {
