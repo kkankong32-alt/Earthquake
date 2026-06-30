@@ -394,6 +394,18 @@
     .item-card[disabled],
     .text-item[disabled] { opacity: 0.28; filter: grayscale(1); cursor: default; }
 
+    .item-card {
+      touch-action: manipulation;
+    }
+
+    .item-card.is-selected {
+      opacity: 1;
+      filter: none;
+      border-color: rgba(250,204,21,0.95);
+      box-shadow: 0 0 0 5px rgba(250,204,21,0.24), 0 0 34px rgba(250,204,21,0.52), 0 22px 54px rgba(0,0,0,0.4);
+      transform: translateY(-4px);
+    }
+
     .drop-zone {
       position: absolute;
       z-index: 7;
@@ -416,6 +428,7 @@
       box-shadow: 0 18px 42px rgba(0,0,0,0.3);
       backdrop-filter: blur(7px);
       transition: transform 180ms ease, border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
+      touch-action: manipulation;
     }
 
     .drop-zone.is-hovered {
@@ -2292,7 +2305,8 @@
       activeStageTimers: [],
       stage3Unlocked: false,
       bgmEnabled: false,
-      bgmStarted: false
+      bgmStarted: false,
+      selectedItem: null
     };
 
     const stageMeta = {
@@ -2541,6 +2555,7 @@
     function clearAllTransientUI() {
       clearStageTimers();
       clearToast();
+      clearSelectedItem();
       clearStageMessages();
       hideEmergency();
     }
@@ -2616,6 +2631,29 @@
       return shuffle(array).slice(0, count);
     }
 
+    function clearSelectedItem() {
+      gameState.selectedItem = null;
+      document.querySelectorAll(".item-card.is-selected, .text-item.is-selected").forEach((item) => {
+        item.classList.remove("is-selected");
+      });
+    }
+
+    function selectItemForTapDrop(item) {
+      if (!item || item.disabled) return;
+      const value = item.dataset.item;
+      if (!value) return;
+      const alreadySelected = gameState.selectedItem === value && item.classList.contains("is-selected");
+      clearSelectedItem();
+      if (alreadySelected) {
+        showToast("선택을 취소했습니다.", "info", 650);
+        return;
+      }
+      gameState.selectedItem = value;
+      item.classList.add("is-selected");
+      AudioManager.playSfx("click");
+      showToast("놓을 위치를 눌러 주세요.", "info", 850);
+    }
+
     function setupDraggable(selector) {
       document.querySelectorAll(selector).forEach((item) => {
         item.addEventListener("dragstart", (event) => {
@@ -2625,6 +2663,10 @@
           }
           event.dataTransfer.setData("text/plain", item.dataset.item);
           event.dataTransfer.effectAllowed = "move";
+        });
+        item.addEventListener("click", (event) => {
+          event.preventDefault();
+          selectItemForTapDrop(item);
         });
       });
     }
@@ -2639,7 +2681,19 @@
       zone.addEventListener("drop", (event) => {
         event.preventDefault();
         zone.classList.remove("is-hovered");
-        onDrop(zone, event.dataTransfer.getData("text/plain"));
+        const value = event.dataTransfer.getData("text/plain");
+        clearSelectedItem();
+        onDrop(zone, value);
+      });
+      zone.addEventListener("click", () => {
+        if (zone.dataset.filled === "true") return;
+        if (!gameState.selectedItem) {
+          showToast("먼저 아래 아이템을 눌러 선택해 주세요.", "info", 850);
+          return;
+        }
+        const value = gameState.selectedItem;
+        clearSelectedItem();
+        onDrop(zone, value);
       });
     }
 
